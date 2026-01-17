@@ -232,9 +232,10 @@ function generateEventUid(activityId, dateStr, timeStr) {
  * @param {Object} classData - Class data object
  * @param {number} index - Index for sequence number
  * @param {boolean} isFirstClassOfDay - Whether this is the first class of the day
+ * @param {Object} campusData - Campus location data with MapKit information
  * @returns {Array<string>} Array of ICS event lines
  */
-function generateIcsEvent(classData, index = 0, isFirstClassOfDay = false) {
+function generateIcsEvent(classData, index = 0, isFirstClassOfDay = false, campusData = null) {
   const {
     subjectCode,
     date,
@@ -373,6 +374,15 @@ function generateIcsEvent(classData, index = 0, isFirstClassOfDay = false) {
   lines.push('STATUS:CONFIRMED');
   lines.push('TRANSP:OPAQUE'); // BUSY time
   
+  // Add structured location with MapKit data if campus information is provided
+  // This enables travel time notifications in Apple Calendar
+  if (campusData && campusData.mapkit && campusData.geo && locationStr) {
+    const structuredLocation = `X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-APPLE-MAPKIT-HANDLE=${campusData.mapkit};X-APPLE-RADIUS=141.1745233861194;X-TITLE=${escapeIcsText(locationStr)}:geo:${campusData.geo}`;
+    lines.push(structuredLocation);
+    // Also add travel advisory for automatic travel time
+    lines.push('X-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC');
+  }
+  
   // Skip URL field entirely to avoid issues with JWT tokens
   // Google Calendar has strict requirements and long token URLs cause import failures
   // URLs are already included in DESCRIPTION (as base URLs if they contain tokens)
@@ -406,9 +416,10 @@ function generateIcsEvent(classData, index = 0, isFirstClassOfDay = false) {
 /**
  * Generate complete ICS file content from classes array
  * @param {Array} classes - Array of class data objects
+ * @param {Object} campusData - Optional campus location data with MapKit information
  * @returns {string} Complete ICS file content
  */
-function generateIcsFile(classes) {
+function generateIcsFile(classes, campusData = null) {
   if (!Array.isArray(classes) || classes.length === 0) {
     throw new Error('No classes to export');
   }
@@ -469,7 +480,7 @@ function generateIcsFile(classes) {
       );
     }
     
-    const eventLines = generateIcsEvent(classData, index, isFirstClassOfDay);
+    const eventLines = generateIcsEvent(classData, index, isFirstClassOfDay, campusData);
     if (eventLines && Array.isArray(eventLines) && eventLines.length > 0) {
       lines.push(...eventLines);
     }
@@ -515,15 +526,16 @@ function downloadIcsFile(icsContent, filename = 'fptu-calendar.ics') {
  * Export classes to ICS file
  * @param {Array} classes - Array of class data objects
  * @param {string} filename - Optional filename
+ * @param {Object} campusData - Optional campus location data with MapKit information
  */
-function exportToIcs(classes, filename) {
+function exportToIcs(classes, filename, campusData = null) {
   try {
     if (!Array.isArray(classes) || classes.length === 0) {
       throw new Error('No classes to export');
     }
     
-    // Generate ICS content
-    const icsContent = generateIcsFile(classes);
+    // Generate ICS content with campus data
+    const icsContent = generateIcsFile(classes, campusData);
     
     // Generate filename with date range if not provided
     if (!filename) {

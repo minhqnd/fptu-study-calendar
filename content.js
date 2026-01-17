@@ -7,6 +7,178 @@
   // Declared at the top to avoid Temporal Dead Zone issues
   let overlayStyleElement = null;
 
+  // Campus configuration with MapKit location data
+  const CAMPUSES = {
+    hoa_lac: {
+      name: 'Truong Dai Hoc FPT',
+      geo: '21.013148,105.524797',
+      mapkit: 'CAESpwMIrk0QmaPutrGyraLOARoSCawDe6ddAzVAEaeB1UeWYVpAIpwBCgdWaWV0bmFtEgJWThoFSGFub2kqClRoYWNoIFRoYXQyClRoYWNoIFRoYXRSFFRoYW5nIExvbmcgQm91bGV2YXJkYhRUaGFuZyBMb25nIEJvdWxldmFyZIoBQUVkdWNhdGlvbiBhbmQgVHJhaW5pbmcgQXJlYSDigJMgSG9hIExhYyBIaWdoLVRlY2ggUGFyayBUaGFjaCBUaGF0KhpUcsaw4budbmcgxJDhuqFpIEjhu41jIEZQVDJkVGhhbmcgTG9uZyBCb3VsZXZhcmQKRWR1Y2F0aW9uIGFuZCBUcmFpbmluZyBBcmVhIOKAkyBIb2EgTGFjIEhpZ2gtVGVjaCBQYXJrClRoYWNoIFRoYXQKSGFub2kKVmlldG5hbTgvUAFaXgooCJmj7raxsq2izgESEgmsA3unXQM1QBGngdVHlmFaQBiuTZADAZgDAaIfMQiZo+62sbKtos4BGiQKGlRyxrDhu51uZyDEkOG6oWkgSOG7jWMgRlBUEAAqAnZpQAA='
+    },
+    da_nang: {
+      name: 'Dai hoc FPT Da Nang',
+      geo: '15.967889,108.260694',
+      mapkit: 'CAES0QIIrk0Q6rW20Z6b5Yf4ARoSCUZKDjOP7y9AEbKRNTSvEFtAImgKB1ZpZXRuYW0SAlZOGgdEYSBOYW5nKgxOZ3UgSGFuaCBTb24yB0RhIE5hbmdCB0hvYSBIYWmKARZGUFQgVXJiYW4gQXJlYSBEYSBOYW5nigEHSG9hIEhhaYoBDE5ndSBIYW5oIFNvbiocxJDhuqFpIGjhu41jIEZQVCDEkMOgIE7hurVuZzIWRlBUIFVyYmFuIEFyZWEgRGEgTmFuZzIHSG9hIEhhaTIMTmd1IEhhbmggU29uMgdEYSBOYW5nMgdWaWV0bmFtOC9QAVpgCigI6rW20Z6b5Yf4ARISCUZKDjOP7y9AEbKRNTSvEFtAGK5NkAMBmAMBoh8zCOq1ttGem+WH+AEaJgocxJDhuqFpIGjhu41jIEZQVCDEkMOgIE7hurVuZxAAKgJ2aUAA'
+    },
+    can_tho: {
+      name: 'Truong Dai Hoc FPT',
+      geo: '10.013006,105.731633',
+      mapkit: 'CAES4QIIrk0Qwp3j9q213ro4GhIJVkW4yagGJEARiAp6FNNuWkAifwoHVmlldG5hbRICVk4aB0NhbiBUaG8qCU5pbmggS2lldTIHQ2FuIFRob0IHQW4gQmluaFIUTmd1eWVuIFZhbiBDdSBTdHJlZXRaAzYwMGIZNjAwLCBOZ3V5ZW4gVmFuIEN1IFN0cmVldIoBB0FuIEJpbmiKAQlOaW5oIEtpZXUqGlRyxrDhu51uZyDEkOG6oWkgSOG7jWMgRlBUMhk2MDAsIE5ndXllbiBWYW4gQ3UgU3RyZWV0MgdBbiBCaW5oMglOaW5oIEtpZXUyB0NhbiBUaG8yB1ZpZXRuYW04L1ABWlwKJwjCneP2rbXeujgSEglWRbjJqAYkQBGICnoU025aQBiuTZADAZgDAaIfMAjCneP2rbXeujgaJAoaVHLGsOG7nW5nIMSQ4bqhaSBI4buNYyBGUFQQACoCdmlAAA=='
+    },
+    hcm: {
+      name: 'FPT University HCMC',
+      geo: '10.841896,106.808790',
+      mapkit: 'CAES3QIIrk0QpOrog/Sy1LjfARoSCY5HX/cMryVAEZz0YzjDs1pAInkKB1ZpZXRuYW0SAlZOGhBIbyBDaGkgTWluaCBDaXR5KgdUaHUgRHVjMhBIbyBDaGkgTWluaCBDaXR5Qg1Mb25nIFRoYW5oIE15UglTdHJlZXQgRDFiCVN0cmVldCBEMYoBDUxvbmcgVGhhbmggTXmKAQdUaHUgRHVjKhxGUFQgVW5pdmVyc2l0eSBIQ01DIFN0dWRlbnRzMglTdHJlZXQgRDEyDUxvbmcgVGhhbmggTXkyB1RodSBEdWMyEEhvIENoaSBNaW5oIENpdHkyB1ZpZXRuYW04L1ABWl4KKAik6uiD9LLUuN8BEhIJjkdf9wyvJUARnPRjOMOzWkAYrk2QAwGYAwGiHzEIpOrog/Sy1LjfARokChxGUFQgVW5pdmVyc2l0eSBIQ01DIFN0dWRlbnRzEAAqAEAA'
+    },
+    quy_nhon: {
+      name: 'FPT University Quy Nhon',
+      geo: '13.803885,109.219148',
+      mapkit: 'CAESmQIIrk0QvMvU2/XpmIlJGhIJy4XKv5abK0ARlx8ThAZOW0AiQwoHVmlldG5hbRICVk4aCUJpbmggRGluaCoIUXV5IE5ob24yCFF1eSBOaG9uQglOaG9uIEJpbmiKAQlOaG9uIEJpbmgqIUZQVCBVbml2ZXJzaXR5IFF1eSBOaG9uIEFJIENhbXB1czIJTmhvbiBCaW5oMghRdXkgTmhvbjIJQmluaCBEaW5oMgdWaWV0bmFtOC9QAVphCicIvMvU2/XpmIlJEhIJy4XKv5abK0ARlx8ThAZOW0AYrk2QAwGYAwGiHzUIvMvU2/XpmIlJGikKIUZQVCBVbml2ZXJzaXR5IFF1eSBOaG9uIEFJIENhbXB1cxAAKgBAAA=='
+    }
+  };
+
+  // Get campus from storage or default to hoa_lac
+  let currentCampus = CAMPUSES.hoa_lac;
+  
+  // Try to load campus from storage
+  if (typeof chrome !== 'undefined' && chrome.storage) {
+    chrome.storage.local.get(['selectedCampus'], (result) => {
+      if (result.selectedCampus && CAMPUSES[result.selectedCampus]) {
+        currentCampus = CAMPUSES[result.selectedCampus];
+      }
+    });
+  }
+
+  // Parse attendance table from Report/ViewAttendstudent.aspx page
+  function parseAttendanceTable(doc, courseCode) {
+    const table = doc.querySelector('table.table-bordered');
+    if (!table) {
+      console.log('No attendance table found');
+      return [];
+    }
+    
+    const data = [];
+    const rows = table.querySelectorAll('tr');
+    
+    console.log(`Parsing attendance table with ${rows.length} rows for course ${courseCode}`);
+    
+    rows.forEach((row, rowIndex) => {
+      const cells = row.querySelectorAll('td');
+      if (cells.length >= 7) {
+        // Extract data from cells
+        const sessionNo = cells[0].textContent.trim();
+        const dateText = cells[1].querySelector('span')?.textContent.trim() || cells[1].textContent.trim();
+        const slotText = cells[2].querySelector('span')?.textContent.trim() || cells[2].textContent.trim();
+        const room = cells[3].textContent.trim();
+        const lecturer = cells[4].textContent.trim();
+        const groupName = cells[5].textContent.trim();
+        const status = cells[6].textContent.trim();
+        
+        // Parse slot text to extract slot number and time
+        // Format: "1_(7:30-9:00)" or "Slot 1_(7:30-9:00)"
+        const slotMatch = slotText.match(/(\d+)_\((.+)\)/);
+        let slotNumber = null;
+        let slotTime = '';
+        
+        if (slotMatch) {
+          slotNumber = parseInt(slotMatch[1], 10);
+          slotTime = `(${slotMatch[2]})`;
+        }
+        
+        // Parse date from DD/MM/YYYY format
+        const dateMatch = dateText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (dateMatch) {
+          const day = parseInt(dateMatch[1], 10);
+          const month = parseInt(dateMatch[2], 10);
+          const year = dateMatch[3];
+          const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          
+          // Parse time from slotTime (7:30-9:00)
+          const timeMatch = slotTime.match(/\((\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\)/);
+          if (timeMatch) {
+            const startTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+            const endTime = `${timeMatch[3].padStart(2, '0')}:${timeMatch[4]}`;
+            
+            // Create Date object to get day name
+            const dateObj = new Date(year, month - 1, day);
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const dayName = dayNames[dateObj.getDay()];
+            
+            // Determine if online (check for Meet URL in FAP, but we don't have access here)
+            // We'll mark as offline by default, can be enhanced later
+            const isOnline = false;
+            
+            data.push({
+              subjectCode: courseCode,
+              day: dayName,
+              date: dateString,
+              slot: slotNumber,
+              time: {
+                start: startTime,
+                end: endTime
+              },
+              location: room || '',
+              isOnline: isOnline,
+              meetUrl: null,
+              edunextUrl: null,
+              materialsUrl: null,
+              isRelocated: false,
+              status: status || 'Not yet',
+              activityId: `${courseCode}-${sessionNo}-${dateString}`,
+              lecturer: lecturer,
+              groupName: groupName,
+              sessionNo: sessionNo
+            });
+          }
+        }
+      }
+    });
+    
+    console.log(`Extracted ${data.length} classes from attendance table`);
+    return data;
+  }
+
+  // Extract course list from attendance page
+  function extractCourses(doc) {
+    const courseDiv = doc.getElementById('ctl00_mainContent_divCourse');
+    if (!courseDiv) {
+      console.log('Course div not found');
+      return [];
+    }
+    
+    const courses = [];
+    
+    // Get current course (displayed in bold)
+    const currentBold = courseDiv.querySelector('b');
+    if (currentBold) {
+      const match = currentBold.textContent.trim().match(/(.+?)\(([A-Z0-9c]+)\)/);
+      if (match) {
+        courses.push({
+          name: match[1].trim(),
+          code: match[2],
+          href: null,
+          isCurrent: true
+        });
+      }
+    }
+    
+    // Get other courses (displayed as links)
+    const courseLinks = courseDiv.querySelectorAll('a');
+    courseLinks.forEach(link => {
+      const match = link.textContent.trim().match(/(.+?)\(([A-Z0-9c]+)\)/);
+      if (match) {
+        courses.push({
+          name: match[1].trim(),
+          code: match[2],
+          href: link.getAttribute('href'),
+          isCurrent: false
+        });
+      }
+    });
+    
+    console.log(`Found ${courses.length} courses:`, courses.map(c => c.code).join(', '));
+    return courses;
+  }
+
   // Parse time from string like "(7:30-9:00)" or "(12:50-15:10)"
   function parseTime(timeStr) {
     const match = timeStr.match(/\((\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\)/);
@@ -427,6 +599,51 @@
     }
   }
 
+  // New function: Extract all schedule data from attendance page (faster, single-page approach)
+  function extractScheduleDataFromAttendance() {
+    try {
+      console.log('Starting attendance-based extraction...');
+      
+      // Check if we're on the attendance page
+      const isAttendancePage = window.location.href.includes('ViewAttendstudent.aspx');
+      if (!isAttendancePage) {
+        console.error('Not on attendance page');
+        return { error: 'NOT_ON_ATTENDANCE_PAGE', classes: [] };
+      }
+      
+      // Extract courses from the page
+      const courses = extractCourses(document);
+      
+      if (courses.length === 0) {
+        console.error('No courses found');
+        return { error: 'NO_COURSES_FOUND', classes: [] };
+      }
+      
+      console.log(`Found ${courses.length} courses`);
+      
+      // Parse the current course's attendance table
+      const allClasses = [];
+      const currentCourse = courses.find(c => c.isCurrent);
+      
+      if (currentCourse) {
+        console.log(`Parsing current course: ${currentCourse.code}`);
+        const classes = parseAttendanceTable(document, currentCourse.code);
+        allClasses.push(...classes);
+      }
+      
+      // Return data with metadata for background script to fetch other courses
+      return {
+        courses: courses,
+        classes: allClasses,
+        needsMoreCourses: courses.filter(c => !c.isCurrent).length > 0
+      };
+      
+    } catch (error) {
+      console.error('Error extracting attendance data:', error);
+      return { error: error.message, classes: [] };
+    }
+  }
+
   // ========================================
   // OVERLAY FUNCTIONALITY (must be defined before sessionStorage check)
   // ========================================
@@ -665,8 +882,11 @@
   console.log('Content script extraction complete. Found', scrapedData ? scrapedData.length : 0, 'classes');
   console.log('Sample data:', scrapedData && scrapedData.length > 0 ? scrapedData[0] : 'No data');
   
-  // Also expose the extraction function globally for debugging
+  // Also expose the extraction functions globally for debugging and for background script to call
   window.extractScheduleData = extractScheduleData;
+  window.extractScheduleDataFromAttendance = extractScheduleDataFromAttendance;
+  window.parseAttendanceTable = parseAttendanceTable;
+  window.currentCampus = currentCampus;
   
   // Notify background script that data is ready
   // This replaces the polling mechanism with proper message passing

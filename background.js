@@ -2,11 +2,41 @@
 
 const FAP_BASE_URL = 'https://fap.fpt.edu.vn';
 const TIMETABLE_URL = 'https://fap.fpt.edu.vn/Report/ScheduleOfWeek.aspx';
+const ATTENDANCE_URL = 'https://fap.fpt.edu.vn/Report/ViewAttendstudent.aspx';
 const LOGIN_CHECK_SELECTOR = '#ctl00_divUser';
 const MAX_RETRIES = 3;
 const LOGIN_CACHE_KEY = 'fptu_calendar_login_state';
 const LOGIN_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 const FIRST_RUN_COMPLETED_KEY = 'fptu_calendar_first_run_completed';
+
+// Campus configuration constants (same as in content.js)
+const CAMPUSES = {
+  hoa_lac: {
+    name: 'Truong Dai Hoc FPT',
+    geo: '21.013148,105.524797',
+    mapkit: 'CAESpwMIrk0QmaPutrGyraLOARoSCawDe6ddAzVAEaeB1UeWYVpAIpwBCgdWaWV0bmFtEgJWThoFSGFub2kqClRoYWNoIFRoYXQyClRoYWNoIFRoYXRSFFRoYW5nIExvbmcgQm91bGV2YXJkYhRUaGFuZyBMb25nIEJvdWxldmFyZIoBQUVkdWNhdGlvbiBhbmQgVHJhaW5pbmcgQXJlYSDigJMgSG9hIExhYyBIaWdoLVRlY2ggUGFyayBUaGFjaCBUaGF0KhpUcsaw4budbmcgxJDhuqFpIEjhu41jIEZQVDJkVGhhbmcgTG9uZyBCb3VsZXZhcmQKRWR1Y2F0aW9uIGFuZCBUcmFpbmluZyBBcmVhIOKAkyBIb2EgTGFjIEhpZ2gtVGVjaCBQYXJrClRoYWNoIFRoYXQKSGFub2kKVmlldG5hbTgvUAFaXgooCJmj7raxsq2izgESEgmsA3unXQM1QBGngdVHlmFaQBiuTZADAZgDAaIfMQiZo+62sbKtos4BGiQKGlRyxrDhu51uZyDEkOG6oWkgSOG7jWMgRlBUEAAqAnZpQAA='
+  },
+  da_nang: {
+    name: 'Dai hoc FPT Da Nang',
+    geo: '15.967889,108.260694',
+    mapkit: 'CAES0QIIrk0Q6rW20Z6b5Yf4ARoSCUZKDjOP7y9AEbKRNTSvEFtAImgKB1ZpZXRuYW0SAlZOGgdEYSBOYW5nKgxOZ3UgSGFuaCBTb24yB0RhIE5hbmdCB0hvYSBIYWmKARZGUFQgVXJiYW4gQXJlYSBEYSBOYW5nigEHSG9hIEhhaYoBDE5ndSBIYW5oIFNvbiocxJDhuqFpIGjhu41jIEZQVCDEkMOgIE7hurVuZzIWRlBUIFVyYmFuIEFyZWEgRGEgTmFuZzIHSG9hIEhhaTIMTmd1IEhhbmggU29uMgdEYSBOYW5nMgdWaWV0bmFtOC9QAVpgCigI6rW20Z6b5Yf4ARISCUZKDjOP7y9AEbKRNTSvEFtAGK5NkAMBmAMBoh8zCOq1ttGem+WH+AEaJgocxJDhuqFpIGjhu41jIEZQVCDEkMOgIE7hurVuZxAAKgJ2aUAA'
+  },
+  can_tho: {
+    name: 'Truong Dai Hoc FPT',
+    geo: '10.013006,105.731633',
+    mapkit: 'CAES4QIIrk0Qwp3j9q213ro4GhIJVkW4yagGJEARiAp6FNNuWkAifwoHVmlldG5hbRICVk4aB0NhbiBUaG8qCU5pbmggS2lldTIHQ2FuIFRob0IHQW4gQmluaFIUTmd1eWVuIFZhbiBDdSBTdHJlZXRaAzYwMGIZNjAwLCBOZ3V5ZW4gVmFuIEN1IFN0cmVldIoBB0FuIEJpbmiKAQlOaW5oIEtpZXUqGlRyxrDhu51uZyDEkOG6oWkgSOG7jWMgRlBUMhk2MDAsIE5ndXllbiBWYW4gQ3UgU3RyZWV0MgdBbiBCaW5oMglOaW5oIEtpZXUyB0NhbiBUaG8yB1ZpZXRuYW04L1ABWlwKJwjCneP2rbXeujgSEglWRbjJqAYkQBGICnoU025aQBiuTZADAZgDAaIfMAjCneP2rbXeujgaJAoaVHLGsOG7nW5nIMSQ4bqhaSBI4buNYyBGUFQQACoCdmlAAA=='
+  },
+  hcm: {
+    name: 'FPT University HCMC',
+    geo: '10.841896,106.808790',
+    mapkit: 'CAES3QIIrk0QpOrog/Sy1LjfARoSCY5HX/cMryVAEZz0YzjDs1pAInkKB1ZpZXRuYW0SAlZOGhBIbyBDaGkgTWluaCBDaXR5KgdUaHUgRHVjMhBIbyBDaGkgTWluaCBDaXR5Qg1Mb25nIFRoYW5oIE15UglTdHJlZXQgRDFiCVN0cmVldCBEMYoBDUxvbmcgVGhhbmggTXmKAQdUaHUgRHVjKhxGUFQgVW5pdmVyc2l0eSBIQ01DIFN0dWRlbnRzMglTdHJlZXQgRDEyDUxvbmcgVGhhbmggTXkyB1RodSBEdWMyEEhvIENoaSBNaW5oIENpdHkyB1ZpZXRuYW04L1ABWl4KKAik6uiD9LLUuN8BEhIJjkdf9wyvJUARnPRjOMOzWkAYrk2QAwGYAwGiHzEIpOrog/Sy1LjfARokChxGUFQgVW5pdmVyc2l0eSBIQ01DIFN0dWRlbnRzEAAqAEAA'
+  },
+  quy_nhon: {
+    name: 'FPT University Quy Nhon',
+    geo: '13.803885,109.219148',
+    mapkit: 'CAESmQIIrk0QvMvU2/XpmIlJGhIJy4XKv5abK0ARlx8ThAZOW0AiQwoHVmlldG5hbRICVk4aCUJpbmggRGluaCoIUXV5IE5ob24yCFF1eSBOaG9uQglOaG9uIEJpbmiKAQlOaG9uIEJpbmgqIUZQVCBVbml2ZXJzaXR5IFF1eSBOaG9uIEFJIENhbXB1czIJTmhvbiBCaW5oMghRdXkgTmhvbjIJQmluaCBEaW5oMgdWaWV0bmFtOC9QAVphCicIvMvU2/XpmIlJEhIJy4XKv5abK0ARlx8ThAZOW0AYrk2QAwGYAwGiHzUIvMvU2/XpmIlJGikKIUZQVCBVbml2ZXJzaXR5IFF1eSBOaG9uIEFJIENhbXB1cxAAKgBAAA=='
+  }
+};
 
 // Timing constants to replace magic numbers
 const WAIT_TIMES = {
@@ -1292,6 +1322,297 @@ async function startScraping(startDate, endDate, waitTime) {
   }
 }
 
+// New function: Start scraping using attendance page (faster, single-page approach)
+async function startScrapingFromAttendance(waitTime) {
+  const errors = [];
+  let attendanceTab = null;
+  let shouldCloseTab = false;
+  let tabToClose = null;
+  let scrapingSuccessful = false;
+  
+  try {
+    // Step 1: Check login and navigate to attendance page
+    const isFirstRunFlag = await isFirstRun();
+    const cachedLoginState = await getCachedLoginState();
+    const needsLoginCheck = isFirstRunFlag || cachedLoginState === null || cachedLoginState === false;
+    const isLoggedInFromCache = cachedLoginState === true;
+    
+    let fapTab = await findExistingFAPTab();
+    
+    if (!fapTab) {
+      if (isLoggedInFromCache) {
+        console.log('Cache indicates logged in, creating tab directly to attendance page');
+        fapTab = await chrome.tabs.create({ url: ATTENDANCE_URL, active: false });
+        shouldCloseTab = true;
+        tabToClose = fapTab.id;
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        attendanceTab = fapTab;
+      } else {
+        console.log('Creating tab to homepage for login check');
+        fapTab = await chrome.tabs.create({ url: FAP_BASE_URL, active: false });
+        shouldCloseTab = true;
+        tabToClose = fapTab.id;
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+    
+    // Step 2: Perform login check if needed
+    if (needsLoginCheck) {
+      const isLoggedIn = await checkLogin(fapTab.id, false);
+      if (!isLoggedIn) {
+        await chrome.scripting.executeScript({
+          target: { tabId: fapTab.id },
+          func: () => {
+            alert('Bạn chưa đăng nhập vào FAP. Vui lòng đăng nhập và thử lại.');
+          }
+        });
+        throw new Error('NOT_LOGGED_IN');
+      }
+      if (isFirstRunFlag) {
+        await markFirstRunCompleted();
+      }
+    }
+    
+    // Step 3: Navigate to attendance page if not already there
+    if (!attendanceTab) {
+      console.log('Navigating to attendance page...');
+      attendanceTab = fapTab;
+      if (shouldCloseTab) {
+        tabToClose = attendanceTab.id;
+      }
+      await navigateToUrl(attendanceTab.id, ATTENDANCE_URL, waitTime);
+    }
+    
+    // Step 4: Verify login before scraping
+    console.log('Verifying login state...');
+    const isOnAttendancePage = await chrome.scripting.executeScript({
+      target: { tabId: attendanceTab.id },
+      func: () => {
+        return window.location.href.includes('ViewAttendstudent.aspx') &&
+               document.querySelector('#ctl00_divUser') !== null;
+      }
+    });
+    
+    if (!isOnAttendancePage[0].result) {
+      console.log('Not on attendance page or not logged in');
+      await invalidateLoginCache();
+      throw new Error('NOT_LOGGED_IN');
+    }
+    
+    // Step 5: Get overlay localization
+    const overlayTitle = chrome.i18n.getMessage('overlayTitle');
+    const overlayMessage = chrome.i18n.getMessage('overlayMessage');
+    const overlayDismiss = chrome.i18n.getMessage('overlayDismiss');
+    const extensionName = chrome.i18n.getMessage('extensionName');
+    
+    // Register tab for overlay injection
+    activeScrapingTabs.set(attendanceTab.id, {
+      title: overlayTitle,
+      message: overlayMessage,
+      dismissText: overlayDismiss,
+      extensionName: extensionName
+    });
+    
+    // Set sessionStorage flag
+    await chrome.scripting.executeScript({
+      target: { tabId: attendanceTab.id },
+      func: (title, message, dismissText, extName) => {
+        sessionStorage.setItem('fptu_scraping_active', 'true');
+        sessionStorage.setItem('fptu_overlay_title', title);
+        sessionStorage.setItem('fptu_overlay_message', message);
+        sessionStorage.setItem('fptu_overlay_dismiss', dismissText);
+        sessionStorage.setItem('fptu_extension_name', extName);
+      },
+      args: [overlayTitle, overlayMessage, overlayDismiss, extensionName]
+    });
+    
+    // Inject minimal overlay
+    await injectMinimalOverlay(attendanceTab.id, overlayTitle, overlayMessage, overlayDismiss, '', extensionName);
+    
+    // Step 6: Inject content script
+    await chrome.scripting.executeScript({
+      target: { tabId: attendanceTab.id },
+      files: ['content.js']
+    });
+    
+    await new Promise(resolve => setTimeout(resolve, WAIT_TIMES.OVERLAY_INIT));
+    
+    // Show overlay
+    await sendMessageToContentScript(attendanceTab.id, {
+      action: 'showOverlay',
+      title: overlayTitle,
+      message: overlayMessage,
+      dismissText: overlayDismiss
+    });
+    
+    // Step 7: Extract initial data from attendance page
+    console.log('Extracting data from attendance page...');
+    
+    const initialDataResults = await chrome.scripting.executeScript({
+      target: { tabId: attendanceTab.id },
+      func: () => {
+        if (typeof window.extractScheduleDataFromAttendance === 'function') {
+          return window.extractScheduleDataFromAttendance();
+        }
+        return { error: 'FUNCTION_NOT_FOUND', classes: [] };
+      }
+    });
+    
+    const initialData = initialDataResults[0].result;
+    
+    if (initialData.error) {
+      throw new Error(initialData.error);
+    }
+    
+    const allClasses = [...initialData.classes];
+    const courses = initialData.courses || [];
+    const otherCourses = courses.filter(c => !c.isCurrent);
+    
+    console.log(`Found ${courses.length} courses, ${otherCourses.length} additional courses to fetch`);
+    
+    // Step 8: Fetch other courses if needed
+    if (otherCourses.length > 0) {
+      for (let i = 0; i < otherCourses.length; i++) {
+        const course = otherCourses[i];
+        
+        // Update progress
+        const progressText = chrome.i18n.getMessage('overlayProgress', [
+          (i + 2).toString(),
+          (otherCourses.length + 1).toString()
+        ]);
+        
+        await chrome.scripting.executeScript({
+          target: { tabId: attendanceTab.id },
+          func: (progressText) => {
+            sessionStorage.setItem('fptu_scraping_progress', progressText);
+          },
+          args: [progressText]
+        });
+        
+        await sendMessageToContentScript(attendanceTab.id, {
+          action: 'updateOverlayProgress',
+          progressText: progressText
+        });
+        
+        // Navigate to course
+        const courseUrl = `${ATTENDANCE_URL}${course.href}`;
+        console.log(`Fetching course ${course.code}...`);
+        
+        await navigateToUrl(attendanceTab.id, courseUrl, waitTime);
+        
+        // Re-inject content script
+        await chrome.scripting.executeScript({
+          target: { tabId: attendanceTab.id },
+          files: ['content.js']
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, WAIT_TIMES.OVERLAY_INIT));
+        
+        // Extract data for this course
+        const courseDataResults = await chrome.scripting.executeScript({
+          target: { tabId: attendanceTab.id },
+          func: (courseCode) => {
+            if (typeof window.parseAttendanceTable === 'function') {
+              return window.parseAttendanceTable(document, courseCode);
+            }
+            return [];
+          },
+          args: [course.code]
+        });
+        
+        const courseClasses = courseDataResults[0].result || [];
+        allClasses.push(...courseClasses);
+        
+        console.log(`Fetched ${courseClasses.length} classes for course ${course.code}`);
+      }
+    }
+    
+    // Step 9: Sort classes by date
+    allClasses.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    console.log(`Total extracted: ${allClasses.length} classes`);
+    
+    // Step 10: Complete overlay
+    const completeText = chrome.i18n.getMessage('overlayCompleteWithWeeks', [
+      courses.length.toString(),
+      courses.length.toString()
+    ]);
+    
+    activeScrapingTabs.delete(attendanceTab.id);
+    
+    await chrome.scripting.executeScript({
+      target: { tabId: attendanceTab.id },
+      func: () => {
+        sessionStorage.removeItem('fptu_scraping_active');
+        sessionStorage.removeItem('fptu_scraping_week');
+        sessionStorage.removeItem('fptu_scraping_total');
+        sessionStorage.removeItem('fptu_scraping_progress');
+      }
+    });
+    
+    await sendMessageToContentScript(attendanceTab.id, {
+      action: 'scrapingComplete',
+      totalWeeks: courses.length,
+      successCount: courses.length,
+      errorCount: 0,
+      completeText: completeText
+    });
+    
+    scrapingSuccessful = true;
+    
+    // Return results
+    return {
+      success: true,
+      data: {
+        classes: allClasses,
+        courses: courses
+      },
+      errors: errors.length > 0 ? errors : undefined
+    };
+    
+  } catch (error) {
+    console.error('Scraping error:', error);
+    
+    // Clear overlay on error
+    if (attendanceTab) {
+      activeScrapingTabs.delete(attendanceTab.id);
+      
+      await chrome.scripting.executeScript({
+        target: { tabId: attendanceTab.id },
+        func: () => {
+          sessionStorage.removeItem('fptu_scraping_active');
+          sessionStorage.removeItem('fptu_scraping_week');
+          sessionStorage.removeItem('fptu_scraping_total');
+          sessionStorage.removeItem('fptu_scraping_progress');
+        }
+      });
+      
+      await sendMessageToContentScript(attendanceTab.id, {
+        action: 'hideOverlay'
+      });
+    }
+    
+    return {
+      success: false,
+      error: error.message
+    };
+  } finally {
+    // Cleanup: close tab if we created it and scraping failed
+    if (shouldCloseTab && tabToClose && !scrapingSuccessful) {
+      try {
+        console.log('Cleaning up: closing tab', tabToClose);
+        await chrome.tabs.remove(tabToClose);
+      } catch (e) {
+        console.log('Tab already closed:', e.message);
+      }
+    }
+    
+    if (attendanceTab && !scrapingSuccessful && activeScrapingTabs.has(attendanceTab.id)) {
+      activeScrapingTabs.delete(attendanceTab.id);
+    }
+  }
+}
+
 // Flatten weeks data to classes array
 function flattenWeeksToClasses(weeksData) {
   const classes = [];
@@ -1367,9 +1688,21 @@ function mergeClassesData(existingClasses, newClasses) {
 }
 
 // Save scraped classes to storage (merge or replace based on mode)
-async function saveScrapedClasses(weeksData, mergeMode = false) {
+async function saveScrapedClasses(data, mergeMode = false) {
   try {
-    const newClasses = flattenWeeksToClasses(weeksData);
+    let newClasses = [];
+    
+    // Handle both data formats: {weeks: [...]} or {classes: [...]}
+    if (data.weeks) {
+      // Old format from week-based scraping
+      newClasses = flattenWeeksToClasses(data);
+    } else if (data.classes) {
+      // New format from attendance-based scraping
+      newClasses = data.classes;
+    } else {
+      console.error('Invalid data format for saving classes');
+      return;
+    }
     
     if (mergeMode) {
       // Merge mode: get existing classes and merge
@@ -1415,6 +1748,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'startScraping') {
     console.log('Starting scraping process...');
     
+    // Check if we should use attendance-based extraction (new method)
+    const useAttendanceMethod = message.useAttendanceMethod === true;
+    
     // Track if response has been sent to avoid calling sendResponse multiple times
     let responseSent = false;
     
@@ -1437,8 +1773,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
     };
     
+    // Choose scraping method based on flag
+    const scrapingPromise = useAttendanceMethod
+      ? startScrapingFromAttendance(message.waitTime)
+      : startScraping(message.startDate, message.endDate, message.waitTime);
+    
     // Handle async response - must return true to keep channel open
-    startScraping(message.startDate, message.endDate, message.waitTime)
+    scrapingPromise
       .then(async (result) => {
         // Log to console
         console.log('Scraping completed:', result);
