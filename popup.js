@@ -30,32 +30,32 @@ function validateDateRange(startDate, endDate) {
   if (!startDate || !endDate) {
     return { valid: false, error: 'Vui lòng chọn ngày bắt đầu và ngày kết thúc' };
   }
-  
+
   // Parse dates
   const start = new Date(startDate);
   const end = new Date(endDate);
-  
+
   // Check if dates are valid
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
     return { valid: false, error: 'Định dạng ngày không hợp lệ' };
   }
-  
+
   // Check if start date is after end date
   if (start > end) {
     return { valid: false, error: 'Ngày bắt đầu phải trước ngày kết thúc' };
   }
-  
+
   // Check if date range is too large (more than 1 year)
   const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
   if (daysDiff > 365) {
     return { valid: false, error: 'Khoảng thời gian không được vượt quá 1 năm (365 ngày)' };
   }
-  
+
   // Check if date range is too small (less than 1 day)
   if (daysDiff < 1) {
     return { valid: false, error: 'Khoảng thời gian phải ít nhất 1 ngày' };
   }
-  
+
   // All validations passed
   return { valid: true };
 }
@@ -68,21 +68,21 @@ function showMergeReplaceDialog() {
     const replaceButton = document.getElementById('replaceButton');
     const cancelButton = document.getElementById('cancelMergeReplaceButton');
     const closeButton = document.getElementById('mergeReplaceOverlayClose');
-    
+
     // Show overlay
     overlay.classList.add('active');
-    
+
     // Handle button clicks
     const handleChoice = (choice) => {
       overlay.classList.remove('active');
       resolve(choice);
     };
-    
+
     mergeButton.addEventListener('click', () => handleChoice('merge'), { once: true });
     replaceButton.addEventListener('click', () => handleChoice('replace'), { once: true });
     cancelButton.addEventListener('click', () => handleChoice(null), { once: true });
     closeButton.addEventListener('click', () => handleChoice(null), { once: true });
-    
+
     // Close on overlay background click
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) {
@@ -127,14 +127,14 @@ async function saveTheme(theme) {
 function calculateEndDate(startDate) {
   const start = new Date(startDate);
   const year = start.getFullYear();
-  
+
   // Add 3 months
   const endDate = new Date(start);
   endDate.setMonth(endDate.getMonth() + 3);
-  
+
   // Set to the last day of that month
   endDate.setMonth(endDate.getMonth() + 1, 0); // Day 0 = last day of previous month
-  
+
   // Restrict to end of year
   const yearEnd = getEndOfYear(year);
   return endDate > yearEnd ? yearEnd : endDate;
@@ -148,7 +148,7 @@ async function initPopup() {
   document.getElementById('sectionDateRange').textContent = getMessage('sectionDateRange');
   document.getElementById('startDateLabel').textContent = getMessage('startDateLabel');
   document.getElementById('endDateLabel').textContent = getMessage('endDateLabel');
-  document.getElementById('waitTimeLabel').textContent = getMessage('waitTimeLabel');
+
   document.getElementById('advancedSettingsText').textContent = getMessage('advancedSettings');
   document.getElementById('aboutTitle').textContent = getMessage('aboutTitle');
   document.getElementById('aboutVersionLabel').textContent = getMessage('aboutVersionLabel');
@@ -157,7 +157,7 @@ async function initPopup() {
   document.getElementById('aboutHelpLabel').textContent = getMessage('aboutHelpLabel');
   // GitHub link is set in HTML, no need to set textContent
   document.getElementById('themeLabel').textContent = getMessage('themeLabel');
-  
+
   // Initialize donation text if element exists
   const donationText = document.querySelector('.donation-text');
   if (donationText) {
@@ -170,19 +170,19 @@ async function initPopup() {
   document.getElementById('previewButtonText').textContent = getMessage('previewButton');
   document.getElementById('exportButtonText').textContent = getMessage('exportButton');
   document.getElementById('progress').textContent = getMessage('progressDefault');
-  
+
   // Set page title
   document.title = getMessage('popupTitle');
-  
+
   // Initialize footer
   document.getElementById('footerMadeBy').textContent = getMessage('footerMadeBy');
   const footerHelpLink = document.getElementById('footerHelpLink');
   footerHelpLink.textContent = getMessage('footerHelpLink');
-  
+
   // Initialize help overlay
   const helpOverlay = document.getElementById('helpOverlay');
   const helpOverlayClose = document.getElementById('helpOverlayClose');
-  
+
   // Set help content localization
   document.getElementById('helpTitle').textContent = getMessage('helpTitle');
   document.getElementById('helpTipsNotice').textContent = getMessage('helpTipsNotice');
@@ -212,57 +212,50 @@ async function initPopup() {
   document.getElementById('helpSupportMessage').textContent = getMessage('helpSupportMessage');
   document.getElementById('helpSupportGitHub').textContent = getMessage('helpSupportGitHub');
   document.getElementById('helpSupportEmail').textContent = getMessage('helpSupportEmail');
-  
+
   // Footer help link click handler
   footerHelpLink.addEventListener('click', (e) => {
     e.preventDefault();
     helpOverlay.classList.add('active');
   });
-  
+
   helpOverlayClose.addEventListener('click', () => {
     helpOverlay.classList.remove('active');
   });
-  
+
   // Close help overlay when clicking outside
   helpOverlay.addEventListener('click', (e) => {
     if (e.target === helpOverlay) {
       helpOverlay.classList.remove('active');
     }
   });
-  
+
   // Initialize settings overlay
   const settingsButton = document.getElementById('settingsButton');
   const settingsOverlay = document.getElementById('settingsOverlay');
   const overlayClose = document.getElementById('overlayClose');
-  
+
   settingsButton.addEventListener('click', () => {
     settingsOverlay.classList.add('active');
   });
-  
-  // Function to close settings overlay (with validation)
+
+  // Function to close settings overlay
   function closeSettingsOverlay() {
-    // Validate wait time before closing
-    if (!isWaitTimeValid()) {
-      // Show error and prevent closing
-      validateWaitTime(waitTimeInput.value, true);
-      alert(getMessage('errorWaitTimeInvalid'));
-      return false;
-    }
     settingsOverlay.classList.remove('active');
     return true;
   }
-  
+
   overlayClose.addEventListener('click', () => {
     closeSettingsOverlay();
   });
-  
+
   // Close overlay when clicking outside
   settingsOverlay.addEventListener('click', (e) => {
     if (e.target === settingsOverlay) {
       closeSettingsOverlay();
     }
   });
-  
+
   // Close overlay with Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -292,25 +285,13 @@ async function initPopup() {
   }
 
   // Load saved settings
-  const result = await chrome.storage.local.get(['waitTime', 'startDate', 'endDate', 'selectedCampus']);
-  let waitTime = result.waitTime || WAIT_TIMES.DEFAULT_WAIT_TIME;
-  
-  // Validate and clamp saved wait time if invalid
-  if (waitTime < 1000) {
-    waitTime = 1000;
-    chrome.storage.local.set({ waitTime: 1000 });
-  } else if (waitTime > 10000) {
-    waitTime = 10000;
-    chrome.storage.local.set({ waitTime: 10000 });
-  }
-  
-  document.getElementById('waitTime').value = waitTime;
+  const result = await chrome.storage.local.get(['startDate', 'endDate', 'selectedCampus']);
 
   // Load saved campus or use default (hoa_lac)
   const campusSelect = document.getElementById('campusSelect');
   const savedCampus = result.selectedCampus || 'hoa_lac';
   campusSelect.value = savedCampus;
-  
+
   // Save campus when selection changes
   campusSelect.addEventListener('change', () => {
     chrome.storage.local.set({ selectedCampus: campusSelect.value });
@@ -320,19 +301,19 @@ async function initPopup() {
   const today = new Date();
   const startDateInput = document.getElementById('startDate');
   const endDateInput = document.getElementById('endDate');
-  
+
   if (result.startDate && result.endDate) {
     // Use saved dates
     startDateInput.value = result.startDate;
     endDateInput.value = result.endDate;
-    
+
     // Set max date for end date based on start date year
     const startYear = new Date(result.startDate).getFullYear();
     endDateInput.max = getEndOfYear(startYear).toISOString().split('T')[0];
   } else {
     // Set start date to today
     startDateInput.value = today.toISOString().split('T')[0];
-    
+
     // Calculate and set end date
     const endDate = calculateEndDate(today);
     endDateInput.value = endDate.toISOString().split('T')[0];
@@ -343,11 +324,11 @@ async function initPopup() {
     const newStart = new Date(startDateInput.value);
     const newEnd = calculateEndDate(newStart);
     endDateInput.value = newEnd.toISOString().split('T')[0];
-    
+
     // Update max date to end of year
     const year = newStart.getFullYear();
     endDateInput.max = getEndOfYear(year).toISOString().split('T')[0];
-    
+
     // Save to storage
     chrome.storage.local.set({
       startDate: startDateInput.value,
@@ -363,80 +344,7 @@ async function initPopup() {
     });
   });
 
-  // Wait time validation and save
-  const waitTimeInput = document.getElementById('waitTime');
-  const waitTimeError = document.getElementById('waitTimeError');
-  
-  // Validation function - accessible globally for overlay close and scrape checks
-  function validateWaitTime(value, showError = true) {
-    const numValue = parseInt(value, 10);
-    
-    // Clear previous error
-    if (showError) {
-      waitTimeInput.classList.remove('invalid');
-      waitTimeError.style.display = 'none';
-      waitTimeError.textContent = '';
-    }
-    
-    // Check if empty
-    if (value === '' || isNaN(numValue)) {
-      if (showError) {
-        waitTimeInput.classList.add('invalid');
-        waitTimeError.textContent = getMessage('errorWaitTimeRequired');
-        waitTimeError.style.display = 'block';
-      }
-      return false;
-    }
-    
-    // Check if below minimum
-    if (numValue < 1000) {
-      if (showError) {
-        waitTimeInput.classList.add('invalid');
-        waitTimeError.textContent = getMessage('errorWaitTimeMin');
-        waitTimeError.style.display = 'block';
-      }
-      return false;
-    }
-    
-    // Check if above maximum
-    if (numValue > 10000) {
-      if (showError) {
-        waitTimeInput.classList.add('invalid');
-        waitTimeError.textContent = getMessage('errorWaitTimeMax');
-        waitTimeError.style.display = 'block';
-      }
-      return false;
-    }
-    
-    return true;
-  }
-  
-  // Function to check if wait time is valid (for overlay close and scrape validation)
-  function isWaitTimeValid() {
-    const value = waitTimeInput.value;
-    return validateWaitTime(value, false);
-  }
-  
-  // Validate on input (real-time feedback)
-  waitTimeInput.addEventListener('input', (e) => {
-    const value = e.target.value;
-    if (value !== '') {
-      validateWaitTime(value);
-    } else {
-      // Clear error when field is empty (user is typing)
-      waitTimeInput.classList.remove('invalid');
-      waitTimeError.style.display = 'none';
-    }
-  });
-  
-  // Validate and save on change
-  waitTimeInput.addEventListener('change', (e) => {
-    const value = e.target.value;
-    if (validateWaitTime(value)) {
-      const numValue = parseInt(value, 10);
-      chrome.storage.local.set({ waitTime: numValue });
-    }
-  });
+
 
   // Get button references early so they're available in all handlers
   const scrapeButton = document.getElementById('scrapeButton');
@@ -446,18 +354,8 @@ async function initPopup() {
 
   // Scrape button handler
   scrapeButton.addEventListener('click', async () => {
-    // Validate wait time before scraping
-    if (!isWaitTimeValid()) {
-      // Open settings overlay to show the error
-      settingsOverlay.classList.add('active');
-      validateWaitTime(waitTimeInput.value, true);
-      alert(getMessage('errorWaitTimeInvalid'));
-      return;
-    }
-    
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
-    const waitTime = parseInt(document.getElementById('waitTime').value, 10);
 
     // NOTE: Date inputs are kept in UI for backward compatibility and potential future filtering features
     // The attendance-based extraction fetches all available courses regardless of date range
@@ -466,7 +364,7 @@ async function initPopup() {
     // Check for existing data and show merge/replace dialog if data exists
     const existing = await chrome.storage.local.get(['scrapedClasses']);
     let mergeMode = false;
-    
+
     if (existing.scrapedClasses && existing.scrapedClasses.length > 0) {
       // Show merge/replace dialog
       const userChoice = await showMergeReplaceDialog();
@@ -485,32 +383,31 @@ async function initPopup() {
     try {
       // Send message to background script to use attendance-based extraction
       progress.textContent = getMessage('progressSending');
-      
+
       const response = await new Promise((resolve, reject) => {
         // Set timeout
         const timeout = setTimeout(() => {
           reject(new Error('Timeout: Không nhận được phản hồi sau 30 giây. Vui lòng kiểm tra console của background script.'));
         }, WAIT_TIMES.SCRAPING_TIMEOUT);
-        
+
         chrome.runtime.sendMessage({
           action: 'startScraping',
           useAttendanceMethod: true,  // Use the new faster method
-          waitTime,
           mergeMode: mergeMode
         }, (response) => {
           clearTimeout(timeout);
-          
+
           if (chrome.runtime.lastError) {
             console.error('Chrome runtime error:', chrome.runtime.lastError);
             reject(new Error(`Lỗi: ${chrome.runtime.lastError.message}`));
             return;
           }
-          
+
           if (!response) {
             reject(new Error('Không nhận được phản hồi từ extension. Vui lòng kiểm tra console của background script.'));
             return;
           }
-          
+
           console.log('Received response from background:', response);
           resolve(response);
         });
@@ -520,16 +417,16 @@ async function initPopup() {
         // Show success message
         progress.className = 'progress success';
         progress.textContent = getMessage('progressSuccess');
-        
+
         // Log errors if any
         if (response.errors && response.errors.length > 0) {
           console.log('Các tuần không thể trích xuất:', response.errors);
         }
-        
+
         // Enable export button
         exportButton.disabled = false;
         // Preview button is always enabled
-        
+
         // Reset progress after 5 seconds
         setTimeout(() => {
           progress.className = 'progress';
@@ -565,12 +462,12 @@ async function initPopup() {
       const result = await chrome.storage.local.get(['scrapedClasses', 'selectedCampus']);
       const classes = result.scrapedClasses || [];
       const selectedCampus = result.selectedCampus || 'hoa_lac';
-      
+
       if (classes.length === 0) {
         alert('Không có dữ liệu lớp học để xuất. Vui lòng trích xuất lịch học trước.');
         return;
       }
-      
+
       // Define campus data (same as in background.js and content.js)
       const CAMPUSES = {
         hoa_lac: {
@@ -599,16 +496,16 @@ async function initPopup() {
           mapkit: 'CAESmQIIrk0QvMvU2/XpmIlJGhIJy4XKv5abK0ARlx8ThAZOW0AiQwoHVmlldG5hbRICVk4aCUJpbmggRGluaCoIUXV5IE5ob24yCFF1eSBOaG9uQglOaG9uIEJpbmiKAQlOaG9uIEJpbmgqIUZQVCBVbml2ZXJzaXR5IFF1eSBOaG9uIEFJIENhbXB1czIJTmhvbiBCaW5oMghRdXkgTmhvbjIJQmluaCBEaW5oMgdWaWV0bmFtOC9QAVphCicIvMvU2/XpmIlJEhIJy4XKv5abK0ARlx8ThAZOW0AYrk2QAwGYAwGiHzUIvMvU2/XpmIlJGikKIUZQVCBVbml2ZXJzaXR5IFF1eSBOaG9uIEFJIENhbXB1cxAAKgBAAA=='
         }
       };
-      
+
       const campusData = CAMPUSES[selectedCampus];
-      
+
       // Export to ICS with campus data for location
       exportToIcs(classes, null, campusData);
-      
+
       // Show success message
       progress.className = 'progress success';
       progress.textContent = `Đã xuất ${classes.length} lớp học thành công!`;
-      
+
       // Reset progress after configured delay
       setTimeout(() => {
         progress.className = 'progress';
@@ -618,7 +515,7 @@ async function initPopup() {
       console.error('Export error:', error);
       progress.className = 'progress error';
       progress.textContent = `Lỗi xuất file: ${error.message}`;
-      
+
       // Reset progress after 5 seconds
       setTimeout(() => {
         progress.className = 'progress';
@@ -635,7 +532,7 @@ async function initPopup() {
     }
   }
   checkExistingData();
-  
+
   // Preview button is always enabled (no need to check for data)
   previewButton.disabled = false;
 
@@ -652,17 +549,17 @@ async function initPopup() {
       } else {
         progress.textContent = getMessage('progressSuccess');
       }
-      
+
       // Enable export button
       exportButton.disabled = false;
       // Preview button is always enabled
-      
+
       // Reset progress after 5 seconds
       setTimeout(() => {
         progress.className = 'progress';
         progress.textContent = getMessage('progressDefault');
       }, 5000);
-      
+
       console.log('Scraping completed:', message);
     }
     return true;

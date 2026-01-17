@@ -79,7 +79,7 @@
     "message": "Đang trích xuất môn $COURSE$/$TOTAL$...",
     "description": "Trạng thái đang trích xuất",
     "placeholders": {
-      "WEEK": {
+      "COURSE": {
         "content": "$1",
         "example": "3"
       },
@@ -164,16 +164,20 @@
     "description": "Thông điệp overlay"
   },
   "overlayProgress": {
-    "message": "Đang trích xuất môn $COURSE$/$TOTAL$",
+    "message": "Đang trích xuất $COURSENAME$ ($CURRENT$/$TOTAL$)",
     "description": "Tiến trình trích xuất trong overlay",
     "placeholders": {
-      "WEEK": {
+      "COURSENAME": {
         "content": "$1",
+        "example": "SE2039"
+      },
+      "CURRENT": {
+        "content": "$2",
         "example": "3"
       },
       "TOTAL": {
-        "content": "$2",
-        "example": "20"
+        "content": "$3",
+        "example": "5"
       }
     }
   },
@@ -544,4 +548,3 @@
     "description": "Văn bản giới thiệu cho nút quyên góp"
   }
 }
-

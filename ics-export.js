@@ -50,15 +50,15 @@ function escapeIcsText(text) {
  */
 function foldIcsLine(line) {
   if (!line) return '';
-  
+
   // RFC 5545: Lines must not exceed 75 octets
   const MAX_LINE_LENGTH = 75;
-  
+
   // If line is already short enough, return as-is
   if (line.length <= MAX_LINE_LENGTH) {
     return line;
   }
-  
+
   // Don't fold lines that are already folded (contain CRLF)
   // Just verify each segment is within limits
   if (line.includes('\r\n')) {
@@ -90,18 +90,18 @@ function foldIcsLine(line) {
     }
     return validSegments.join('\r\n');
   }
-  
+
   // Split line into chunks
   // First line: up to 75 characters
   // Continuation lines: space (1 char) + up to 74 content chars = 75 total
   const chunks = [];
   let position = 0;
   const totalLength = line.length;
-  
+
   // First chunk: up to 75 characters
   chunks.push(line.substring(position, Math.min(position + MAX_LINE_LENGTH, totalLength)));
   position += MAX_LINE_LENGTH;
-  
+
   // Continuation chunks: space + up to 74 characters each
   while (position < totalLength) {
     const remaining = totalLength - position;
@@ -109,7 +109,7 @@ function foldIcsLine(line) {
     chunks.push(' ' + line.substring(position, position + continuationLength));
     position += continuationLength;
   }
-  
+
   // Join with CRLF
   return chunks.join('\r\n');
 }
@@ -122,14 +122,14 @@ function foldIcsLine(line) {
  */
 function formatIcsDateTime(dateStr, timeStr) {
   if (!dateStr || !timeStr) return '';
-  
+
   // Parse date and time (timeStr can be HH:mm or HH:mm:ss)
   const [year, month, day] = dateStr.split('-').map(Number);
   const timeParts = timeStr.split(':');
   const hours = Number(timeParts[0]);
   const minutes = Number(timeParts[1]);
   const seconds = timeParts.length > 2 ? Number(timeParts[2]) : 0;
-  
+
   // Format as floating time (no timezone indicator) - this preserves the exact time
   // Times from FAP are in Vietnam local time, so we use floating format
   // Format: YYYYMMDDTHHmmss (no Z suffix = floating time)
@@ -139,7 +139,7 @@ function formatIcsDateTime(dateStr, timeStr) {
   const hourStr = String(hours).padStart(2, '0');
   const minStr = String(minutes).padStart(2, '0');
   const secStr = String(seconds).padStart(2, '0');
-  
+
   return `${yearStr}${monthStr}${dayStr}T${hourStr}${minStr}${secStr}`;
 }
 
@@ -151,17 +151,17 @@ function formatIcsDateTime(dateStr, timeStr) {
  */
 function formatIcsDateTimeUtc(dateStr, timeStr) {
   if (!dateStr || !timeStr) return '';
-  
+
   // Parse date and time (timeStr can be HH:mm or HH:mm:ss)
   const [year, month, day] = dateStr.split('-').map(Number);
   const timeParts = timeStr.split(':');
   const hours = Number(timeParts[0]);
   const minutes = Number(timeParts[1]);
   const seconds = timeParts.length > 2 ? Number(timeParts[2]) : 0;
-  
+
   // Create date object in UTC
   const date = new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
-  
+
   // Format as UTC: YYYYMMDDTHHmmssZ
   const yearStr = String(date.getUTCFullYear()).padStart(4, '0');
   const monthStr = String(date.getUTCMonth() + 1).padStart(2, '0');
@@ -169,7 +169,7 @@ function formatIcsDateTimeUtc(dateStr, timeStr) {
   const hourStr = String(date.getUTCHours()).padStart(2, '0');
   const minStr = String(date.getUTCMinutes()).padStart(2, '0');
   const secStr = String(date.getUTCSeconds()).padStart(2, '0');
-  
+
   return `${yearStr}${monthStr}${dayStr}T${hourStr}${minStr}${secStr}Z`;
 }
 
@@ -252,32 +252,32 @@ function generateIcsEvent(classData, index = 0, isFirstClassOfDay = false, campu
     status,
     activityId
   } = classData;
-  
+
   if (!date || !time || !time.start || !time.end) {
     console.warn('Invalid class data for ICS export:', classData);
     return [];
   }
-  
+
   // Format date-times
   const dtStart = formatIcsDateTime(date, time.start);
   const dtEnd = formatIcsDateTime(date, time.end);
-  
+
   // Validate date-time formatting
   if (!dtStart || !dtEnd) {
     console.warn('Failed to format date-time for class:', classData);
     return [];
   }
-  
+
   // Generate DTSTAMP (current time in UTC)
   const now = new Date();
   const dtStamp = formatIcsDateTimeUtc(
     now.toISOString().split('T')[0],
     String(now.getUTCHours()).padStart(2, '0') + ':' + String(now.getUTCMinutes()).padStart(2, '0') + ':' + String(now.getUTCSeconds()).padStart(2, '0')
   );
-  
+
   // Generate UID
   const uid = generateEventUid(activityId, date, time.start);
-  
+
   // Build summary (title) - required field
   let summary = (subjectCode && subjectCode.trim()) || 'Class';
   if (isOnline) {
@@ -286,73 +286,28 @@ function generateIcsEvent(classData, index = 0, isFirstClassOfDay = false, campu
   if (isRelocated) {
     summary += ` [${getIcsMessage('icsSummaryRelocated')}]`;
   }
-  
-  // Build description (avoiding long JWT token URLs)
-  const mainParts = [];
-  const materialsParts = [];
-  
-  // Add location with localized label
-  if (location && location.trim()) {
-    mainParts.push(`${getIcsMessage('icsLocationLabel')}: ${location.trim()}`);
-  }
-  
-  // Status field removed as requested
-  
-  // Add relocated warning with localized message
-  if (isRelocated) {
-    mainParts.push(getIcsMessage('icsRelocatedWarning'));
-  }
-  
-  // Add Google Meet link - only include if it doesn't have JWT token
-  let hasMeetLink = false;
-  if (meetUrl && meetUrl.trim() && !hasJwtToken(meetUrl)) {
-    mainParts.push(`${getIcsMessage('icsMeetLabel')}: ${meetUrl.trim()}`);
-    hasMeetLink = true;
-  } else if (meetUrl && meetUrl.trim()) {
-    // If Meet URL has token, use base URL only
-    const baseUrl = extractBaseUrl(meetUrl);
-    if (baseUrl) {
-      mainParts.push(`${getIcsMessage('icsMeetLabel')}: ${baseUrl}`);
-      hasMeetLink = true;
-    }
-  }
-  
-  // For EduNext and Materials, just add notes instead of links
-  // (to avoid JWT token issues and keep description clean)
-  if (edunextUrl && edunextUrl.trim()) {
-    materialsParts.push(getIcsMessage('icsHasEduNext'));
-  }
-  
-  if (materialsUrl && materialsUrl.trim()) {
-    materialsParts.push(getIcsMessage('icsHasMaterials'));
-  }
-  
-  // Add note about viewing links on FAP if we have EduNext or Materials
-  if ((edunextUrl && edunextUrl.trim()) || (materialsUrl && materialsUrl.trim())) {
-    materialsParts.push(getIcsMessage('icsViewLinksNote'));
-  }
-  
-  // Combine main parts and materials parts with two newlines separator
-  const allParts = [];
-  if (mainParts.length > 0) {
-    allParts.push(...mainParts);
-  }
-  
-  // Add a newline before materials section if there are materials
-  if (materialsParts.length > 0) {
-    allParts.push(''); // First newline
-    allParts.push(...materialsParts);
-  }
-  
-  const description = allParts.length > 0 ? allParts.join('\n') : '';
-  
+
+  // Build description - simple notes format: "Lecturer - GroupName - Session: X"
+  // Get additional class data (from attendance-based extraction)
+  const lecturer = classData.lecturer || '';
+  const groupName = classData.groupName || '';
+  const sessionNo = classData.sessionNo || '';
+
+  // Build description - single line matching reference script format
+  const notesParts = [];
+  if (lecturer) notesParts.push(lecturer);
+  if (groupName) notesParts.push(groupName);
+  if (sessionNo) notesParts.push(`Session: ${sessionNo}`);
+
+  const description = notesParts.length > 0 ? notesParts.join(' - ') : '';
+
   // Build location string (for LOCATION property)
   let locationStr = (location && location.trim()) || '';
   if (isOnline) {
     // For online classes, just append "(Online)" without the Meet URL
     locationStr = locationStr ? `${locationStr} (Online)` : 'Online';
   }
-  
+
   // Build ICS event - only include required fields and non-empty optional fields
   const lines = [
     'BEGIN:VEVENT',
@@ -362,21 +317,21 @@ function generateIcsEvent(classData, index = 0, isFirstClassOfDay = false, campu
     `DTEND:${dtEnd}`,
     `SUMMARY:${escapeIcsText(summary)}`,
   ];
-  
+
   // Add DESCRIPTION only if not empty
   if (description) {
     lines.push(`DESCRIPTION:${escapeIcsText(description)}`);
   }
-  
+
   // Add LOCATION only if not empty
   if (locationStr) {
     lines.push(`LOCATION:${escapeIcsText(locationStr)}`);
   }
-  
+
   lines.push('SEQUENCE:0');
   lines.push('STATUS:CONFIRMED');
   lines.push('TRANSP:OPAQUE'); // BUSY time
-  
+
   // Add structured location with MapKit data if campus information is provided
   // This enables travel time notifications in Apple Calendar
   if (campusData && campusData.mapkit && campusData.geo && locationStr) {
@@ -385,11 +340,11 @@ function generateIcsEvent(classData, index = 0, isFirstClassOfDay = false, campu
     // Also add travel advisory for automatic travel time
     lines.push('X-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC');
   }
-  
+
   // Skip URL field entirely to avoid issues with JWT tokens
   // Google Calendar has strict requirements and long token URLs cause import failures
   // URLs are already included in DESCRIPTION (as base URLs if they contain tokens)
-  
+
   // Determine reminder time based on rules:
   // - Online classes: 15 minutes before
   // - First class of day (offline): 30 minutes before
@@ -402,16 +357,16 @@ function generateIcsEvent(classData, index = 0, isFirstClassOfDay = false, campu
   } else {
     reminderMinutes = 15; // Other classes: 15 minutes
   }
-  
+
   // Add alarm/reminder
   lines.push('BEGIN:VALARM');
   lines.push(`TRIGGER:-PT${reminderMinutes}M`);
   lines.push('ACTION:DISPLAY');
   lines.push(`DESCRIPTION:Reminder: ${escapeIcsText(summary)}`);
   lines.push('END:VALARM');
-  
+
   lines.push('END:VEVENT');
-  
+
   // Return array of lines (will be folded in generateIcsFile)
   return lines;
 }
@@ -426,14 +381,14 @@ function generateIcsFile(classes, campusData = null) {
   if (!Array.isArray(classes) || classes.length === 0) {
     throw new Error('No classes to export');
   }
-  
+
   // Sort classes by date and time
   const sortedClasses = [...classes].sort((a, b) => {
     const dateA = new Date(a.date + 'T' + a.time.start);
     const dateB = new Date(b.date + 'T' + b.time.start);
     return dateA - dateB;
   });
-  
+
   // Group classes by date to determine first class of each day
   const classesByDate = {};
   sortedClasses.forEach(classData => {
@@ -443,7 +398,7 @@ function generateIcsFile(classes, campusData = null) {
     }
     classesByDate[dateKey].push(classData);
   });
-  
+
   // Sort classes within each day by start time
   Object.keys(classesByDate).forEach(dateKey => {
     classesByDate[dateKey].sort((a, b) => {
@@ -452,7 +407,7 @@ function generateIcsFile(classes, campusData = null) {
       return timeA.localeCompare(timeB);
     });
   });
-  
+
   // Build ICS file
   const lines = [
     'BEGIN:VCALENDAR',
@@ -464,7 +419,7 @@ function generateIcsFile(classes, campusData = null) {
     `X-WR-CALDESC:Study schedule exported from FPTU FAP`,
     `X-WR-TIMEZONE:Asia/Ho_Chi_Minh`,
   ];
-  
+
   // Add each event with information about whether it's the first class of the day
   sortedClasses.forEach((classData, index) => {
     // Check if this is the first class of the day
@@ -472,7 +427,7 @@ function generateIcsFile(classes, campusData = null) {
     const dateKey = classData.date;
     const dayClasses = classesByDate[dateKey];
     let isFirstClassOfDay = false;
-    
+
     if (dayClasses && dayClasses.length > 0) {
       // The first class in the sorted array for this day is the earliest
       const firstClassOfDay = dayClasses[0];
@@ -482,18 +437,18 @@ function generateIcsFile(classes, campusData = null) {
         firstClassOfDay.activityId === classData.activityId
       );
     }
-    
+
     const eventLines = generateIcsEvent(classData, index, isFirstClassOfDay, campusData);
     if (eventLines && Array.isArray(eventLines) && eventLines.length > 0) {
       lines.push(...eventLines);
     }
   });
-  
+
   lines.push('END:VCALENDAR');
-  
+
   // Fold all lines according to RFC 5545
   const foldedLines = lines.map(line => foldIcsLine(line));
-  
+
   // Join with CRLF and ensure file ends with CRLF (RFC 5545 requirement)
   return foldedLines.join('\r\n') + '\r\n';
 }
@@ -507,17 +462,17 @@ function downloadIcsFile(icsContent, filename = 'fptu-calendar.ics') {
   // Create blob with proper MIME type
   const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
   const url = URL.createObjectURL(blob);
-  
+
   // Create download link
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
   link.style.display = 'none';
-  
+
   // Trigger download
   document.body.appendChild(link);
   link.click();
-  
+
   // Cleanup
   setTimeout(() => {
     document.body.removeChild(link);
@@ -536,10 +491,10 @@ function exportToIcs(classes, filename, campusData = null) {
     if (!Array.isArray(classes) || classes.length === 0) {
       throw new Error('No classes to export');
     }
-    
+
     // Generate ICS content with campus data
     const icsContent = generateIcsFile(classes, campusData);
-    
+
     // Generate filename with date range if not provided
     if (!filename) {
       const dates = classes.map(c => c.date).sort();
@@ -547,10 +502,10 @@ function exportToIcs(classes, filename, campusData = null) {
       const endDate = dates[dates.length - 1] || startDate;
       filename = `fptu-calendar-${startDate}-to-${endDate}.ics`;
     }
-    
+
     // Download file
     downloadIcsFile(icsContent, filename);
-    
+
     return true;
   } catch (error) {
     console.error('Error exporting to ICS:', error);

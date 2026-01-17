@@ -44,7 +44,8 @@ const WAIT_TIMES = {
   POLLING_INTERVAL: 100,               // Interval for checking page/table readiness (ms)
   CONTENT_SCRIPT_INIT: 1500,           // Delay for content script initialization (ms)
   OVERLAY_INIT: 100,                   // Delay for overlay initialization (ms)
-  DATA_READY_TIMEOUT: 10000            // Timeout for dataReady message (ms)
+  DATA_READY_TIMEOUT: 10000,           // Timeout for dataReady message (ms)
+  DEFAULT_WAIT_TIME: 2000              // Default wait time for page operations (ms) - reduced since we use fetch()
 };
 
 // Log when service worker starts
@@ -154,7 +155,7 @@ async function isOnTimetablePage(tabId) {
 async function findExistingFAPTab() {
   try {
     const tabs = await chrome.tabs.query({ url: ['https://fap.fpt.edu.vn/*'] });
-    
+
     // Look for timetable page first (preferred)
     for (const tab of tabs) {
       if (tab.url && tab.url.includes('ScheduleOfWeek.aspx')) {
@@ -165,7 +166,7 @@ async function findExistingFAPTab() {
         }
       }
     }
-    
+
     // Look for any FAP tab (could be login page or other pages)
     for (const tab of tabs) {
       if (tab.url && tab.url.startsWith(FAP_BASE_URL)) {
@@ -173,7 +174,7 @@ async function findExistingFAPTab() {
         return tab;
       }
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error finding existing FAP tab:', error);
@@ -196,9 +197,9 @@ async function checkLogin(tabId, forceCheck = false) {
       // If cache is null, we need to check
       // If cache is false, we also need to check (user might have logged in)
     }
-    
+
     console.log('Performing actual login check on tab:', tabId);
-    
+
     // Wait for page to fully load and DOM to be ready before checking
     await chrome.scripting.executeScript({
       target: { tabId },
@@ -220,7 +221,7 @@ async function checkLogin(tabId, forceCheck = false) {
         });
       }
     });
-    
+
     // Perform actual login check with retry
     const results = await chrome.scripting.executeScript({
       target: { tabId },
@@ -234,12 +235,12 @@ async function checkLogin(tabId, forceCheck = false) {
       }
     });
     const isLoggedIn = results[0].result;
-    
+
     console.log('Login check result:', isLoggedIn);
-    
+
     // Save to cache
     await saveLoginStateToCache(isLoggedIn);
-    
+
     return isLoggedIn;
   } catch (error) {
     console.error('Error checking login:', error);
@@ -297,7 +298,7 @@ function weekOverlapsRange(weekStart, weekEnd, rangeStart, rangeEnd) {
   const weekEndDate = new Date(weekEnd);
   const rangeStartDate = new Date(rangeStart);
   const rangeEndDate = new Date(rangeEnd);
-  
+
   // Week overlaps if any day in week is in range
   return (weekStartDate <= rangeEndDate && weekEndDate >= rangeStartDate);
 }
@@ -314,7 +315,7 @@ async function getWeekOptions(tabId) {
       func: () => {
         const weekSelect = document.querySelector('#ctl00_mainContent_drpSelectWeek');
         if (!weekSelect) return [];
-        
+
         const options = Array.from(weekSelect.options);
         return options.map(opt => ({
           value: opt.value,
@@ -335,36 +336,36 @@ function filterWeeksByRange(weekOptions, startDate, endDate, year) {
   const filtered = [];
   const rangeStart = new Date(startDate);
   const rangeEnd = new Date(endDate);
-  
+
   // Normalize range dates to start of day for accurate comparison
   rangeStart.setHours(0, 0, 0, 0);
   rangeEnd.setHours(23, 59, 59, 999);
-  
+
   for (let i = 0; i < weekOptions.length; i++) {
     const option = weekOptions[i];
     const isLastOption = i === weekOptions.length - 1;
-    
+
     // Parse week range from text like "12/01 To 18/01" or "30/12 To 05/01"
     const match = option.text.match(/(\d{2}\/\d{2})\s+To\s+(\d{2}\/\d{2})/);
     if (!match) continue;
-    
+
     const weekStartStr = match[1];
     const weekEndStr = match[2];
-    
+
     // Parse dates to determine which year they belong to
     const [startDay, startMonth] = weekStartStr.split('/').map(Number);
     const [endDay, endMonth] = weekEndStr.split('/').map(Number);
-    
+
     // Determine year for week dates (handle year boundaries)
     // IMPORTANT: The FIRST value in the dropdown spans the previous year to the current year.
     // The LAST value in the dropdown remains entirely in the current year.
     // Example when year dropdown shows 2025:
     // - First week "30/12 To 05/01" = Dec 30, 2024 to Jan 5, 2025 (spans boundary, previous year to current year)
     // - Last week "15/12 To 21/12" = Dec 15, 2025 to Dec 21, 2025 (entirely in current year, no boundary span)
-    
+
     let weekStartYear = year;
     let weekEndYear = year;
-    
+
     // If week spans year boundary (e.g., 30/12 To 05/01)
     // This pattern typically appears as the FIRST option in the dropdown
     if (startMonth === 12 && endMonth === 1) {
@@ -383,7 +384,7 @@ function filterWeeksByRange(weekOptions, startDate, endDate, year) {
       // This typically appears as the LAST option in the dropdown
       weekStartYear = year;
       weekEndYear = year;
-      
+
       // Additional validation: if this is the last option and has December dates,
       // ensure it's treated as the current year (not previous year)
       if (isLastOption && startMonth === 12 && endMonth === 12) {
@@ -392,14 +393,14 @@ function filterWeeksByRange(weekOptions, startDate, endDate, year) {
         weekEndYear = year;
       }
     }
-    
+
     const weekStartDate = parseDate(weekStartStr, weekStartYear);
     let weekEndDate = parseDate(weekEndStr, weekEndYear);
-    
+
     // Normalize week dates to start/end of day for accurate comparison
     weekStartDate.setHours(0, 0, 0, 0);
     weekEndDate.setHours(23, 59, 59, 999);
-    
+
     // Verify the dates make sense
     if (weekEndDate < weekStartDate) {
       // This shouldn't happen, but if it does, adjust
@@ -407,33 +408,33 @@ function filterWeeksByRange(weekOptions, startDate, endDate, year) {
       weekEndDate = parseDate(weekEndStr, weekEndYear);
       weekEndDate.setHours(23, 59, 59, 999);
     }
-    
+
     // Check if week overlaps with date range
     const overlaps = weekOverlapsRange(weekStartDate, weekEndDate, rangeStart, rangeEnd);
-    
+
     // Additional validation: calculate distance from range to catch year parsing errors
     // A week is "way outside" if it's more than 7 days (one week) away from the range
     // This allows partial overlaps (e.g., week 06/01-12/01 with range 08/01-14/01) 
     // but excludes weeks that are clearly unrelated (e.g., week 15/12-21/12 with range 01/01-04/30)
     const daysBeforeRange = Math.ceil((rangeStart - weekEndDate) / (1000 * 60 * 60 * 24));
     const daysAfterRange = Math.ceil((weekStartDate - rangeEnd) / (1000 * 60 * 60 * 24));
-    
+
     const weekStartISO = weekStartDate.toISOString().split('T')[0];
     const weekEndISO = weekEndDate.toISOString().split('T')[0];
     const rangeStartISO = rangeStart.toISOString().split('T')[0];
     const rangeEndISO = rangeEnd.toISOString().split('T')[0];
-    
+
     // Include week if it overlaps AND is not way outside the range
     // This handles partial overlaps correctly while excluding weeks that are clearly unrelated
     // Note: If overlaps is true, the week is by definition not "way outside", but we check
     // the distance anyway to catch potential year parsing errors that might cause false overlaps
     const isWayOutside = daysBeforeRange > 7 || daysAfterRange > 7;
-    
+
     if (overlaps && !isWayOutside) {
       // Week overlaps with range and is not way outside - include it
       // This allows partial overlaps: if a week partially overlaps, include ALL classes from that week
       console.log(`Including week "${option.text}" (${weekStartISO} to ${weekEndISO}) for range ${rangeStartISO} to ${rangeEndISO} - overlaps`);
-      
+
       filtered.push({
         value: option.value,
         text: option.text,
@@ -451,7 +452,7 @@ function filterWeeksByRange(weekOptions, startDate, endDate, year) {
       }
     }
   }
-  
+
   return filtered;
 }
 
@@ -463,7 +464,7 @@ async function extractWeekData(tabId) {
     const dataPromise = new Promise((resolve) => {
       let timeoutId = null;
       let listener = null;
-      
+
       // Set up message listener
       listener = (message, sender) => {
         // Only accept messages from the correct tab
@@ -471,15 +472,15 @@ async function extractWeekData(tabId) {
           // Clean up
           if (timeoutId) clearTimeout(timeoutId);
           if (listener) chrome.runtime.onMessage.removeListener(listener);
-          
+
           console.log('Received dataReady message from content script');
           resolve(message.data || []);
         }
       };
-      
+
       // Add listener BEFORE injecting script
       chrome.runtime.onMessage.addListener(listener);
-      
+
       // Timeout after configured delay - fallback to polling if message doesn't arrive
       timeoutId = setTimeout(() => {
         chrome.runtime.onMessage.removeListener(listener);
@@ -487,22 +488,22 @@ async function extractWeekData(tabId) {
         resolve(null); // Signal to use fallback
       }, WAIT_TIMES.DATA_READY_TIMEOUT);
     });
-    
+
     // Inject content script (listener is already set up above)
     await chrome.scripting.executeScript({
       target: { tabId },
       files: ['content.js']
     });
-    
+
     // Wait for dataReady message from content script
     let weekData = await dataPromise;
-    
+
     // Fallback to polling if message wasn't received (for compatibility)
     if (weekData === null) {
       console.log('Using fallback polling method');
       // Wait a bit for content script to execute
       await new Promise(resolve => setTimeout(resolve, WAIT_TIMES.CONTENT_SCRIPT_INIT));
-      
+
       // Get the extracted data
       const dataResults = await chrome.scripting.executeScript({
         target: { tabId },
@@ -520,16 +521,16 @@ async function extractWeekData(tabId) {
           return window.scrapedData || null;
         }
       });
-      
+
       weekData = dataResults[0].result || [];
     }
-    
+
     // Ensure we return an array
     if (!Array.isArray(weekData)) {
       console.warn('extractWeekData: data is not an array, converting:', weekData);
       weekData = weekData ? [weekData] : [];
     }
-    
+
     return weekData;
   } catch (error) {
     console.error('Error extracting week data:', error);
@@ -558,10 +559,10 @@ async function selectWeek(tabId, weekValue, waitTime) {
       },
       args: [weekValue]
     });
-    
+
     // Wait for DOM update
     await new Promise(resolve => setTimeout(resolve, waitTime));
-    
+
     // Wait for table to be ready (with timeout)
     try {
       await chrome.scripting.executeScript({
@@ -569,17 +570,17 @@ async function selectWeek(tabId, weekValue, waitTime) {
         func: (timeout) => {
           return new Promise((resolve, reject) => {
             const startTime = Date.now();
-              const checkTable = () => {
-                const table = document.querySelector('table thead th[rowspan="2"]');
-                const tbody = document.querySelector('table tbody');
-                if (table && tbody && tbody.querySelectorAll('tr').length > 0) {
-                  resolve();
-                } else if (Date.now() - startTime > timeout) {
-                  reject(new Error('Table not ready within timeout'));
-                } else {
-                  setTimeout(checkTable, WAIT_TIMES.POLLING_INTERVAL);
-                }
-              };
+            const checkTable = () => {
+              const table = document.querySelector('table thead th[rowspan="2"]');
+              const tbody = document.querySelector('table tbody');
+              if (table && tbody && tbody.querySelectorAll('tr').length > 0) {
+                resolve();
+              } else if (Date.now() - startTime > timeout) {
+                reject(new Error('Table not ready within timeout'));
+              } else {
+                setTimeout(checkTable, WAIT_TIMES.POLLING_INTERVAL);
+              }
+            };
             checkTable();
           });
         },
@@ -588,7 +589,7 @@ async function selectWeek(tabId, weekValue, waitTime) {
     } catch (error) {
       console.warn('Table readiness check failed, proceeding anyway:', error);
     }
-    
+
     return true;
   } catch (error) {
     console.error('Error selecting week:', error);
@@ -619,13 +620,13 @@ async function injectMinimalOverlay(tabId, title, message, dismissText, progress
           if (document.getElementById('fptu-calendar-overlay')) {
             return;
           }
-          
+
           // Check sessionStorage
           const isScraping = sessionStorage.getItem('fptu_scraping_active') === 'true';
           if (!isScraping && !title) {
             return; // Don't show if not scraping
           }
-          
+
           // Use provided values or fallback to sessionStorage
           // Note: sessionStorage is accessed here (in page context), not in background script
           const overlayTitle = title || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('fptu_overlay_title') : null) || 'Đang trích xuất lịch học';
@@ -633,7 +634,7 @@ async function injectMinimalOverlay(tabId, title, message, dismissText, progress
           const overlayDismiss = dismissText || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('fptu_overlay_dismiss') : null) || 'Đóng';
           const overlayProgress = progressText || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('fptu_scraping_progress') : null) || '';
           const extName = extensionName || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('fptu_extension_name') : null) || 'FPTU Study Calendar';
-          
+
           // Create style element if it doesn't exist
           let styleEl = document.getElementById('fptu-calendar-overlay-style');
           if (!styleEl) {
@@ -732,7 +733,7 @@ async function injectMinimalOverlay(tabId, title, message, dismissText, progress
             `;
             (document.head || document.documentElement).appendChild(styleEl);
           }
-          
+
           // Create overlay element
           const overlay = document.createElement('div');
           overlay.id = 'fptu-calendar-overlay';
@@ -746,17 +747,17 @@ async function injectMinimalOverlay(tabId, title, message, dismissText, progress
               <button class="overlay-button" id="overlay-dismiss" style="display: none;">${overlayDismiss}</button>
             </div>
           `;
-          
+
           // Add dismiss handler
           overlay.querySelector('#overlay-dismiss').addEventListener('click', () => {
             overlay.remove();
           });
-          
+
           // Append to body (or documentElement if body doesn't exist yet)
           const target = document.body || document.documentElement;
           target.appendChild(overlay);
         };
-        
+
         // Try to create immediately
         if (document.readyState === 'loading') {
           // If still loading, wait for DOMContentLoaded
@@ -801,11 +802,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (!tab.url || !tab.url.includes('ScheduleOfWeek.aspx')) {
     return;
   }
-  
+
   // If page is starting to load and we have active scraping for this tab
   if (changeInfo.status === 'loading' && activeScrapingTabs.has(tabId)) {
     const overlayData = activeScrapingTabs.get(tabId);
-    
+
     // Inject overlay immediately (don't wait)
     // Progress text will be read from sessionStorage inside the injected script
     injectMinimalOverlay(tabId, overlayData.title, overlayData.message, overlayData.dismissText, null, overlayData.extensionName).catch(() => {
@@ -822,11 +823,11 @@ async function startScraping(startDate, endDate, waitTime) {
   let shouldCloseTab = false; // Track if we created a new tab that should be closed on error
   let tabToClose = null; // Track the tab ID that should be closed on error
   let scrapingSuccessful = false; // Track if scraping completed successfully
-  
+
   try {
     // Step 1: Check if this is the first run (after install/reload)
     const isFirstRunFlag = await isFirstRun();
-    
+
     // Step 2: Check cache to determine if we need login check
     const cachedLoginState = await getCachedLoginState();
     // If first run or cache says false/null, always force login check
@@ -834,14 +835,14 @@ async function startScraping(startDate, endDate, waitTime) {
     // We can trust a true cache (unless first run) because we verify before scraping
     const needsLoginCheck = isFirstRunFlag || cachedLoginState === null || cachedLoginState === false;
     const isLoggedInFromCache = cachedLoginState === true;
-    
+
     if (isFirstRunFlag) {
       console.log('First run detected, will force login check');
     }
-    
+
     // Step 3: Find existing FAP tab or create new one based on login state
     let fapTab = await findExistingFAPTab();
-    
+
     if (!fapTab) {
       // No existing tab found
       // On first run, always go to homepage to ensure proper login check
@@ -883,7 +884,7 @@ async function startScraping(startDate, endDate, waitTime) {
         });
       }
     }
-    
+
     // Step 4: Perform login check only if needed
     if (needsLoginCheck) {
       if (isFirstRunFlag) {
@@ -925,7 +926,7 @@ async function startScraping(startDate, endDate, waitTime) {
       // This catches cases where user logged out but cache is stale
       console.log('Cache indicates logged in, will verify login state before scraping');
     }
-    
+
     // Step 5: Navigate to timetable page if not already there
     // (Only if we haven't already created a tab directly to timetable page)
     if (!timetableTab) {
@@ -948,13 +949,13 @@ async function startScraping(startDate, endDate, waitTime) {
       // timetableTab was already set, update tabToClose
       tabToClose = timetableTab.id;
     }
-    
+
     // Step 5.5: Always verify login state before starting to scrape
     // This is critical to catch stale cache cases where user logged out
     // We verify by checking if we can access the timetable page properly
     console.log('Verifying login state before scraping...');
     const isActuallyLoggedIn = await isOnTimetablePage(timetableTab.id);
-    
+
     if (!isActuallyLoggedIn) {
       // User is not actually logged in, invalidate cache and show error
       console.log('Login verification failed - user is not logged in');
@@ -967,7 +968,7 @@ async function startScraping(startDate, endDate, waitTime) {
       });
       throw new Error('NOT_LOGGED_IN');
     }
-    
+
     // If we got here, user is logged in - update cache to ensure it's fresh
     if (isLoggedInFromCache) {
       console.log('Login verification passed, cache was correct');
@@ -976,13 +977,13 @@ async function startScraping(startDate, endDate, waitTime) {
       console.log('Login verification passed, updating cache');
       await saveLoginStateToCache(true);
     }
-    
+
     // Get localized messages for overlay
     const overlayTitle = chrome.i18n.getMessage('overlayTitle');
     const overlayMessage = chrome.i18n.getMessage('overlayMessage');
     const overlayDismiss = chrome.i18n.getMessage('overlayDismiss');
     const extensionName = chrome.i18n.getMessage('extensionName');
-    
+
     // Register this tab for overlay injection on page loads
     activeScrapingTabs.set(timetableTab.id, {
       title: overlayTitle,
@@ -990,7 +991,7 @@ async function startScraping(startDate, endDate, waitTime) {
       dismissText: overlayDismiss,
       extensionName: extensionName
     });
-    
+
     // Set sessionStorage flag to indicate scraping is starting
     // This ensures overlay persists across page reloads
     await chrome.scripting.executeScript({
@@ -1004,19 +1005,19 @@ async function startScraping(startDate, endDate, waitTime) {
       },
       args: [overlayTitle, overlayMessage, overlayDismiss, extensionName]
     });
-    
+
     // Immediately inject minimal overlay (appears instantly)
     await injectMinimalOverlay(timetableTab.id, overlayTitle, overlayMessage, overlayDismiss, '', extensionName);
-    
+
     // Step 3: Inject content script
     await chrome.scripting.executeScript({
       target: { tabId: timetableTab.id },
       files: ['content.js']
     });
-    
+
     // Wait briefly for content script to initialize
     await new Promise(resolve => setTimeout(resolve, WAIT_TIMES.OVERLAY_INIT));
-    
+
     // Send message to show overlay with localized strings
     // Content script will check sessionStorage first, but this ensures it shows if sessionStorage wasn't set
     await sendMessageToContentScript(timetableTab.id, {
@@ -1025,10 +1026,10 @@ async function startScraping(startDate, endDate, waitTime) {
       message: overlayMessage,
       dismissText: overlayDismiss
     });
-    
+
     // Step 4: Determine year from start date
     const year = new Date(startDate).getFullYear();
-    
+
     // Step 5: Check current year dropdown value and update if necessary
     const currentYearResult = await chrome.scripting.executeScript({
       target: { tabId: timetableTab.id },
@@ -1040,10 +1041,10 @@ async function startScraping(startDate, endDate, waitTime) {
         return null;
       }
     });
-    
+
     const currentYear = currentYearResult[0].result;
     const needsYearUpdate = currentYear === null || currentYear !== year;
-    
+
     if (needsYearUpdate) {
       console.log(`Current year dropdown: ${currentYear}, updating to: ${year}`);
       // Select year
@@ -1060,80 +1061,80 @@ async function startScraping(startDate, endDate, waitTime) {
         },
         args: [year]
       });
-      
+
       // Wait for DOM to load after year change
       await new Promise(resolve => setTimeout(resolve, waitTime));
     } else {
       console.log(`Year dropdown already set to ${year}, skipping update`);
     }
-    
+
     // Step 6: Get week options (always fetch fresh after potential year change)
     // If we updated the year, the week dropdown should already be updated
     // If we didn't update, we still need to read the current week options
     const weekOptions = await getWeekOptions(timetableTab.id);
-    
+
     // Step 7: Filter weeks by date range
     const weeksToScrape = filterWeeksByRange(weekOptions, startDate, endDate, year);
-    
+
     console.log(`Found ${weeksToScrape.length} weeks to scrape`);
-    
+
     // Step 8: Iterate through weeks
     for (let i = 0; i < weeksToScrape.length; i++) {
       const week = weeksToScrape[i];
-      
+
       // Send progress update to popup
       try {
         chrome.runtime.sendMessage({
           action: 'progressUpdate',
           currentWeek: i + 1,
           totalWeeks: weeksToScrape.length
-        }).catch(() => {}); // Ignore errors if popup is closed
+        }).catch(() => { }); // Ignore errors if popup is closed
       } catch (e) {
         // Ignore errors
       }
-      
-          // Get localized progress message
-          const progressText = chrome.i18n.getMessage('overlayProgress', [
-            (i + 1).toString(),
-            weeksToScrape.length.toString()
-          ]);
-          
-          // IMPORTANT: Set sessionStorage BEFORE selecting week (which causes page reload)
-          // This ensures overlay persists across page reloads
-          await chrome.scripting.executeScript({
-            target: { tabId: timetableTab.id },
-            func: (weekNum, totalWeeks, progressText) => {
-              sessionStorage.setItem('fptu_scraping_active', 'true');
-              sessionStorage.setItem('fptu_scraping_week', weekNum.toString());
-              sessionStorage.setItem('fptu_scraping_total', totalWeeks.toString());
-              sessionStorage.setItem('fptu_scraping_progress', progressText);
-            },
-            args: [i + 1, weeksToScrape.length, progressText]
-          });
-          
-          // Send progress update to content script for overlay (if page hasn't reloaded yet)
-          await sendMessageToContentScript(timetableTab.id, {
-            action: 'updateOverlayProgress',
-            currentWeek: i + 1,
-            totalWeeks: weeksToScrape.length,
-            progressText: progressText
-          });
-          
-          // The tabs.onUpdated listener will inject overlay immediately when page starts loading
-      
+
+      // Get localized progress message
+      const progressText = chrome.i18n.getMessage('overlayProgress', [
+        (i + 1).toString(),
+        weeksToScrape.length.toString()
+      ]);
+
+      // IMPORTANT: Set sessionStorage BEFORE selecting week (which causes page reload)
+      // This ensures overlay persists across page reloads
+      await chrome.scripting.executeScript({
+        target: { tabId: timetableTab.id },
+        func: (weekNum, totalWeeks, progressText) => {
+          sessionStorage.setItem('fptu_scraping_active', 'true');
+          sessionStorage.setItem('fptu_scraping_week', weekNum.toString());
+          sessionStorage.setItem('fptu_scraping_total', totalWeeks.toString());
+          sessionStorage.setItem('fptu_scraping_progress', progressText);
+        },
+        args: [i + 1, weeksToScrape.length, progressText]
+      });
+
+      // Send progress update to content script for overlay (if page hasn't reloaded yet)
+      await sendMessageToContentScript(timetableTab.id, {
+        action: 'updateOverlayProgress',
+        currentWeek: i + 1,
+        totalWeeks: weeksToScrape.length,
+        progressText: progressText
+      });
+
+      // The tabs.onUpdated listener will inject overlay immediately when page starts loading
+
       // IMPORTANT: We should NOT switch years based on week.startYear
       // The week appears in the current year's dropdown, so we should stay on that year
       // The week.startYear is only used for date parsing, not for which dropdown to use
       // For example, week "29/12 To 04/01" appears in 2026 dropdown, so we stay on 2026
       // even though the week starts in 2025
-      
+
       // Pass the correct year for date parsing to content script
       // For weeks that span year boundaries, we need to tell content script which year to use
       // for parsing dates. For "29/12 To 04/01" in 2026 dropdown:
       // - December dates (29/12) should use 2025
       // - January dates (04/01) should use 2026
       // The content script will handle this based on weekSpansBoundary flag
-      
+
       // Set the expected year for date parsing
       // For boundary weeks, we need to pass both the selected year (for the dropdown)
       // and the base year (for parsing December dates)
@@ -1147,10 +1148,10 @@ async function startScraping(startDate, endDate, waitTime) {
         },
         args: [year, baseYearForParsing]
       });
-      
+
       let success = false;
       let retries = 0;
-      
+
       while (!success && retries < MAX_RETRIES) {
         try {
           // Select week (this will cause page reload via postback)
@@ -1159,17 +1160,17 @@ async function startScraping(startDate, endDate, waitTime) {
           if (!selectSuccess) {
             throw new Error('Failed to select week');
           }
-          
+
           // After page reload, re-inject content script
           // Content script will check sessionStorage and show overlay immediately
           await chrome.scripting.executeScript({
             target: { tabId: timetableTab.id },
             files: ['content.js']
           });
-          
+
           // Wait briefly for content script to initialize
           await new Promise(resolve => setTimeout(resolve, WAIT_TIMES.OVERLAY_INIT));
-          
+
           // Send progress update to content script (overlay should already be showing)
           await sendMessageToContentScript(timetableTab.id, {
             action: 'updateOverlayProgress',
@@ -1177,8 +1178,8 @@ async function startScraping(startDate, endDate, waitTime) {
             totalWeeks: weeksToScrape.length,
             progressText: progressText
           });
-          
-                // Extract data
+
+          // Extract data
           const weekData = await extractWeekData(timetableTab.id);
           // weekData is now always an array (empty if no classes)
           if (Array.isArray(weekData)) {
@@ -1196,13 +1197,13 @@ async function startScraping(startDate, endDate, waitTime) {
           }
         } catch (error) {
           // Check if error might be due to login expiration
-          if (error.message.includes('login') || error.message.includes('Login') || 
-              error.message.includes('NOT_LOGGED_IN') || error.message.includes('unauthorized')) {
+          if (error.message.includes('login') || error.message.includes('Login') ||
+            error.message.includes('NOT_LOGGED_IN') || error.message.includes('unauthorized')) {
             console.log('Possible login expiration detected, invalidating cache');
             await invalidateLoginCache();
             throw new Error('NOT_LOGGED_IN');
           }
-          
+
           retries++;
           if (retries >= MAX_RETRIES) {
             errors.push({
@@ -1217,7 +1218,7 @@ async function startScraping(startDate, endDate, waitTime) {
         }
       }
     }
-    
+
     // Send completion message to popup
     try {
       chrome.runtime.sendMessage({
@@ -1225,11 +1226,11 @@ async function startScraping(startDate, endDate, waitTime) {
         totalWeeks: weeksToScrape.length,
         successCount: allWeeksData.length,
         errorCount: errors.length
-      }).catch(() => {});
+      }).catch(() => { });
     } catch (e) {
       // Ignore errors
     }
-    
+
     // Send completion message to content script to update overlay
     if (timetableTab) {
       // Generate completion text with week count
@@ -1237,10 +1238,10 @@ async function startScraping(startDate, endDate, waitTime) {
         allWeeksData.length.toString(),
         weeksToScrape.length.toString()
       ]);
-      
+
       // Remove from active scraping tabs
       activeScrapingTabs.delete(timetableTab.id);
-      
+
       // Clear sessionStorage flags
       await chrome.scripting.executeScript({
         target: { tabId: timetableTab.id },
@@ -1251,7 +1252,7 @@ async function startScraping(startDate, endDate, waitTime) {
           sessionStorage.removeItem('fptu_scraping_progress');
         }
       });
-      
+
       await sendMessageToContentScript(timetableTab.id, {
         action: 'scrapingComplete',
         totalWeeks: weeksToScrape.length,
@@ -1260,10 +1261,10 @@ async function startScraping(startDate, endDate, waitTime) {
         completeText: completeText
       });
     }
-    
+
     // Mark scraping as successful before returning
     scrapingSuccessful = true;
-    
+
     // Return results
     return {
       success: true,
@@ -1273,15 +1274,15 @@ async function startScraping(startDate, endDate, waitTime) {
       },
       errors: errors.length > 0 ? errors : undefined
     };
-    
+
   } catch (error) {
     console.error('Scraping error:', error);
-    
+
     // Clear sessionStorage and hide overlay on error
     if (timetableTab) {
       // Remove from active scraping tabs
       activeScrapingTabs.delete(timetableTab.id);
-      
+
       await chrome.scripting.executeScript({
         target: { tabId: timetableTab.id },
         func: () => {
@@ -1291,12 +1292,12 @@ async function startScraping(startDate, endDate, waitTime) {
           sessionStorage.removeItem('fptu_scraping_progress');
         }
       });
-      
+
       await sendMessageToContentScript(timetableTab.id, {
         action: 'hideOverlay'
       });
     }
-    
+
     return {
       success: false,
       error: error.message
@@ -1312,7 +1313,7 @@ async function startScraping(startDate, endDate, waitTime) {
         console.log('Tab already closed or could not be removed:', e.message);
       }
     }
-    
+
     // Always cleanup activeScrapingTabs entry if scraping didn't complete successfully
     // (Successful completion already cleans up in the try block)
     if (timetableTab && !scrapingSuccessful && activeScrapingTabs.has(timetableTab.id)) {
@@ -1322,23 +1323,24 @@ async function startScraping(startDate, endDate, waitTime) {
   }
 }
 
-// New function: Start scraping using attendance page (faster, single-page approach)
-async function startScrapingFromAttendance(waitTime) {
+// New function: Start scraping using attendance page (faster, background fetch approach)
+async function startScrapingFromAttendance() {
+  const waitTime = WAIT_TIMES.DEFAULT_WAIT_TIME; // Use internal constant
   const errors = [];
   let attendanceTab = null;
   let shouldCloseTab = false;
   let tabToClose = null;
   let scrapingSuccessful = false;
-  
+
   try {
     // Step 1: Check login and navigate to attendance page
     const isFirstRunFlag = await isFirstRun();
     const cachedLoginState = await getCachedLoginState();
     const needsLoginCheck = isFirstRunFlag || cachedLoginState === null || cachedLoginState === false;
     const isLoggedInFromCache = cachedLoginState === true;
-    
+
     let fapTab = await findExistingFAPTab();
-    
+
     if (!fapTab) {
       if (isLoggedInFromCache) {
         console.log('Cache indicates logged in, creating tab directly to attendance page');
@@ -1355,7 +1357,7 @@ async function startScrapingFromAttendance(waitTime) {
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
-    
+
     // Step 2: Perform login check if needed
     if (needsLoginCheck) {
       const isLoggedIn = await checkLogin(fapTab.id, false);
@@ -1372,7 +1374,7 @@ async function startScrapingFromAttendance(waitTime) {
         await markFirstRunCompleted();
       }
     }
-    
+
     // Step 3: Navigate to attendance page if not already there
     if (!attendanceTab) {
       console.log('Navigating to attendance page...');
@@ -1382,29 +1384,29 @@ async function startScrapingFromAttendance(waitTime) {
       }
       await navigateToUrl(attendanceTab.id, ATTENDANCE_URL, waitTime);
     }
-    
+
     // Step 4: Verify login before scraping
     console.log('Verifying login state...');
     const isOnAttendancePage = await chrome.scripting.executeScript({
       target: { tabId: attendanceTab.id },
       func: () => {
         return window.location.href.includes('ViewAttendstudent.aspx') &&
-               document.querySelector('#ctl00_divUser') !== null;
+          document.querySelector('#ctl00_divUser') !== null;
       }
     });
-    
+
     if (!isOnAttendancePage[0].result) {
       console.log('Not on attendance page or not logged in');
       await invalidateLoginCache();
       throw new Error('NOT_LOGGED_IN');
     }
-    
+
     // Step 5: Get overlay localization
     const overlayTitle = chrome.i18n.getMessage('overlayTitle');
     const overlayMessage = chrome.i18n.getMessage('overlayMessage');
     const overlayDismiss = chrome.i18n.getMessage('overlayDismiss');
     const extensionName = chrome.i18n.getMessage('extensionName');
-    
+
     // Register tab for overlay injection
     activeScrapingTabs.set(attendanceTab.id, {
       title: overlayTitle,
@@ -1412,7 +1414,7 @@ async function startScrapingFromAttendance(waitTime) {
       dismissText: overlayDismiss,
       extensionName: extensionName
     });
-    
+
     // Set sessionStorage flag
     await chrome.scripting.executeScript({
       target: { tabId: attendanceTab.id },
@@ -1425,18 +1427,18 @@ async function startScrapingFromAttendance(waitTime) {
       },
       args: [overlayTitle, overlayMessage, overlayDismiss, extensionName]
     });
-    
+
     // Inject minimal overlay
     await injectMinimalOverlay(attendanceTab.id, overlayTitle, overlayMessage, overlayDismiss, '', extensionName);
-    
+
     // Step 6: Inject content script
     await chrome.scripting.executeScript({
       target: { tabId: attendanceTab.id },
       files: ['content.js']
     });
-    
+
     await new Promise(resolve => setTimeout(resolve, WAIT_TIMES.OVERLAY_INIT));
-    
+
     // Show overlay
     await sendMessageToContentScript(attendanceTab.id, {
       action: 'showOverlay',
@@ -1444,10 +1446,10 @@ async function startScrapingFromAttendance(waitTime) {
       message: overlayMessage,
       dismissText: overlayDismiss
     });
-    
+
     // Step 7: Extract initial data from attendance page
     console.log('Extracting data from attendance page...');
-    
+
     const initialDataResults = await chrome.scripting.executeScript({
       target: { tabId: attendanceTab.id },
       func: () => {
@@ -1457,89 +1459,184 @@ async function startScrapingFromAttendance(waitTime) {
         return { error: 'FUNCTION_NOT_FOUND', classes: [] };
       }
     });
-    
+
     const initialData = initialDataResults[0].result;
-    
+
     if (initialData.error) {
       throw new Error(initialData.error);
     }
-    
+
     const allClasses = [...initialData.classes];
     const courses = initialData.courses || [];
     const otherCourses = courses.filter(c => !c.isCurrent);
-    
+    const currentCourse = courses.find(c => c.isCurrent);
+    const totalCourses = courses.length;
+
     console.log(`Found ${courses.length} courses, ${otherCourses.length} additional courses to fetch`);
-    
-    // Step 8: Fetch other courses if needed
+
+    // Show progress for first course (current course)
+    if (currentCourse) {
+      const firstProgressText = chrome.i18n.getMessage('overlayProgress', [
+        currentCourse.code,
+        '1',
+        totalCourses.toString()
+      ]);
+
+      await sendMessageToContentScript(attendanceTab.id, {
+        action: 'updateOverlayProgress',
+        progressText: firstProgressText
+      });
+    }
+
+    // Step 8: Fetch other courses in background (no page navigation needed)
     if (otherCourses.length > 0) {
       for (let i = 0; i < otherCourses.length; i++) {
         const course = otherCourses[i];
-        
-        // Update progress
+
+        // Update progress with course name
         const progressText = chrome.i18n.getMessage('overlayProgress', [
+          course.code,
           (i + 2).toString(),
-          (otherCourses.length + 1).toString()
+          totalCourses.toString()
         ]);
-        
+
         await chrome.scripting.executeScript({
           target: { tabId: attendanceTab.id },
           func: (progressText) => {
             sessionStorage.setItem('fptu_scraping_progress', progressText);
+            // Update overlay progress text if visible
+            const progressEl = document.getElementById('overlay-progress');
+            if (progressEl) {
+              progressEl.textContent = progressText;
+            }
           },
           args: [progressText]
         });
-        
+
         await sendMessageToContentScript(attendanceTab.id, {
           action: 'updateOverlayProgress',
           progressText: progressText
         });
-        
-        // Navigate to course
+
+        // Fetch course data in background using fetch() API (no page navigation, no delay)
         const courseUrl = `${ATTENDANCE_URL}${course.href}`;
-        console.log(`Fetching course ${course.code}...`);
-        
-        await navigateToUrl(attendanceTab.id, courseUrl, waitTime);
-        
-        // Re-inject content script
-        await chrome.scripting.executeScript({
-          target: { tabId: attendanceTab.id },
-          files: ['content.js']
-        });
-        
-        await new Promise(resolve => setTimeout(resolve, WAIT_TIMES.OVERLAY_INIT));
-        
-        // Extract data for this course
-        const courseDataResults = await chrome.scripting.executeScript({
-          target: { tabId: attendanceTab.id },
-          func: (courseCode) => {
-            if (typeof window.parseAttendanceTable === 'function') {
-              return window.parseAttendanceTable(document, courseCode);
-            }
-            return [];
-          },
-          args: [course.code]
-        });
-        
-        const courseClasses = courseDataResults[0].result || [];
-        allClasses.push(...courseClasses);
-        
-        console.log(`Fetched ${courseClasses.length} classes for course ${course.code}`);
+        console.log(`Fetching course ${course.code} in background...`);
+
+        try {
+          const courseDataResults = await chrome.scripting.executeScript({
+            target: { tabId: attendanceTab.id },
+            func: async (courseUrl, courseCode) => {
+              // Fetch the course page HTML in background
+              const response = await fetch(courseUrl, { credentials: 'include' });
+              const html = await response.text();
+
+              // Parse HTML to DOM
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(html, 'text/html');
+
+              // Parse attendance table from the fetched document
+              const table = doc.querySelector('table.table-bordered');
+              if (!table) {
+                console.log(`No attendance table found for course ${courseCode}`);
+                return [];
+              }
+
+              const data = [];
+              const rows = table.querySelectorAll('tr');
+
+              rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 7) {
+                  const sessionNo = cells[0].textContent.trim();
+                  const dateText = cells[1].querySelector('span')?.textContent.trim() || cells[1].textContent.trim();
+                  const slotText = cells[2].querySelector('span')?.textContent.trim() || cells[2].textContent.trim();
+                  const room = cells[3].textContent.trim();
+                  const lecturer = cells[4].textContent.trim();
+                  const groupName = cells[5].textContent.trim();
+                  const status = cells[6].textContent.trim();
+
+                  // Parse slot text
+                  const slotMatch = slotText.match(/(\d+)_\((.+)\)/);
+                  let slotNumber = null;
+                  let slotTime = '';
+                  if (slotMatch) {
+                    slotNumber = parseInt(slotMatch[1], 10);
+                    slotTime = `(${slotMatch[2]})`;
+                  }
+
+                  // Parse date
+                  const dateMatch = dateText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                  if (dateMatch) {
+                    const day = parseInt(dateMatch[1], 10);
+                    const month = parseInt(dateMatch[2], 10);
+                    const year = dateMatch[3];
+                    const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+                    // Parse time from slotTime
+                    const timeMatch = slotTime.match(/\((\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\)/);
+                    if (timeMatch) {
+                      const startTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+                      const endTime = `${timeMatch[3].padStart(2, '0')}:${timeMatch[4]}`;
+
+                      const dateObj = new Date(parseInt(year), month - 1, day);
+                      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                      const dayName = dayNames[dateObj.getDay()];
+
+                      data.push({
+                        subjectCode: courseCode,
+                        day: dayName,
+                        date: dateString,
+                        slot: slotNumber,
+                        time: {
+                          start: startTime,
+                          end: endTime
+                        },
+                        location: room || '',
+                        isOnline: false,
+                        meetUrl: null,
+                        edunextUrl: null,
+                        materialsUrl: null,
+                        isRelocated: false,
+                        status: status || 'Not yet',
+                        activityId: `${courseCode}-${sessionNo}-${dateString}`,
+                        lecturer: lecturer,
+                        groupName: groupName,
+                        sessionNo: sessionNo
+                      });
+                    }
+                  }
+                }
+              });
+
+              return data;
+            },
+            args: [courseUrl, course.code]
+          });
+
+          const courseClasses = courseDataResults[0].result || [];
+          allClasses.push(...courseClasses);
+
+          console.log(`Fetched ${courseClasses.length} classes for course ${course.code}`);
+        } catch (error) {
+          console.error(`Error fetching course ${course.code}:`, error);
+          errors.push({ course: course.code, error: error.message });
+        }
       }
     }
-    
+
     // Step 9: Sort classes by date
     allClasses.sort((a, b) => new Date(a.date) - new Date(b.date));
-    
+
     console.log(`Total extracted: ${allClasses.length} classes`);
-    
+
     // Step 10: Complete overlay
     const completeText = chrome.i18n.getMessage('overlayCompleteWithWeeks', [
       courses.length.toString(),
       courses.length.toString()
     ]);
-    
+
     activeScrapingTabs.delete(attendanceTab.id);
-    
+
     await chrome.scripting.executeScript({
       target: { tabId: attendanceTab.id },
       func: () => {
@@ -1549,7 +1646,7 @@ async function startScrapingFromAttendance(waitTime) {
         sessionStorage.removeItem('fptu_scraping_progress');
       }
     });
-    
+
     await sendMessageToContentScript(attendanceTab.id, {
       action: 'scrapingComplete',
       totalWeeks: courses.length,
@@ -1557,9 +1654,9 @@ async function startScrapingFromAttendance(waitTime) {
       errorCount: 0,
       completeText: completeText
     });
-    
+
     scrapingSuccessful = true;
-    
+
     // Return results
     return {
       success: true,
@@ -1569,14 +1666,14 @@ async function startScrapingFromAttendance(waitTime) {
       },
       errors: errors.length > 0 ? errors : undefined
     };
-    
+
   } catch (error) {
     console.error('Scraping error:', error);
-    
+
     // Clear overlay on error
     if (attendanceTab) {
       activeScrapingTabs.delete(attendanceTab.id);
-      
+
       await chrome.scripting.executeScript({
         target: { tabId: attendanceTab.id },
         func: () => {
@@ -1586,12 +1683,12 @@ async function startScrapingFromAttendance(waitTime) {
           sessionStorage.removeItem('fptu_scraping_progress');
         }
       });
-      
+
       await sendMessageToContentScript(attendanceTab.id, {
         action: 'hideOverlay'
       });
     }
-    
+
     return {
       success: false,
       error: error.message
@@ -1606,7 +1703,7 @@ async function startScrapingFromAttendance(waitTime) {
         console.log('Tab already closed:', e.message);
       }
     }
-    
+
     if (attendanceTab && !scrapingSuccessful && activeScrapingTabs.has(attendanceTab.id)) {
       activeScrapingTabs.delete(attendanceTab.id);
     }
@@ -1632,17 +1729,17 @@ function flattenWeeksToClasses(weeksData) {
 function classesConflict(class1, class2) {
   // Conflict if: same activityId, subjectCode, date, and time
   return class1.activityId === class2.activityId &&
-         class1.subjectCode === class2.subjectCode &&
-         class1.date === class2.date &&
-         class1.time.start === class2.time.start &&
-         class1.time.end === class2.time.end;
+    class1.subjectCode === class2.subjectCode &&
+    class1.date === class2.date &&
+    class1.time.start === class2.time.start &&
+    class1.time.end === class2.time.end;
 }
 
 // Merge two classes, preferring newer property values
 function mergeClasses(existingClass, newClass) {
   // Create merged class starting with existing
   const merged = { ...existingClass };
-  
+
   // Overwrite with new class properties (prefer newer values)
   Object.keys(newClass).forEach(key => {
     if (key === 'time' && newClass.time) {
@@ -1655,7 +1752,7 @@ function mergeClasses(existingClass, newClass) {
       merged[key] = newClass[key] !== undefined ? newClass[key] : merged[key];
     }
   });
-  
+
   return merged;
 }
 
@@ -1663,11 +1760,11 @@ function mergeClasses(existingClass, newClass) {
 function mergeClassesData(existingClasses, newClasses) {
   const merged = [...existingClasses];
   const conflictIndices = new Map(); // Map to track which existing classes have conflicts
-  
+
   // First pass: identify conflicts and merge them
   newClasses.forEach(newClass => {
     let foundConflict = false;
-    
+
     for (let i = 0; i < merged.length; i++) {
       if (classesConflict(merged[i], newClass)) {
         // Merge the conflicting class
@@ -1677,13 +1774,13 @@ function mergeClassesData(existingClasses, newClasses) {
         break;
       }
     }
-    
+
     // If no conflict found, add as new class
     if (!foundConflict) {
       merged.push(newClass);
     }
   });
-  
+
   return merged;
 }
 
@@ -1691,7 +1788,7 @@ function mergeClassesData(existingClasses, newClasses) {
 async function saveScrapedClasses(data, mergeMode = false) {
   try {
     let newClasses = [];
-    
+
     // Handle both data formats: {weeks: [...]} or {classes: [...]}
     if (data.weeks) {
       // Old format from week-based scraping
@@ -1703,12 +1800,12 @@ async function saveScrapedClasses(data, mergeMode = false) {
       console.error('Invalid data format for saving classes');
       return;
     }
-    
+
     if (mergeMode) {
       // Merge mode: get existing classes and merge
       const existing = await chrome.storage.local.get(['scrapedClasses']);
       const existingClasses = existing.scrapedClasses || [];
-      
+
       const mergedClasses = mergeClassesData(existingClasses, newClasses);
       await chrome.storage.local.set({ scrapedClasses: mergedClasses });
       console.log(`Merged ${newClasses.length} new classes with ${existingClasses.length} existing classes. Total: ${mergedClasses.length} classes`);
@@ -1738,22 +1835,22 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 // Message listener
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Background received message:', message.action);
-  
+
   // Handle ping for testing
   if (message.action === 'ping') {
     sendResponse({ pong: true });
     return false;
   }
-  
+
   if (message.action === 'startScraping') {
     console.log('Starting scraping process...');
-    
+
     // Check if we should use attendance-based extraction (new method)
     const useAttendanceMethod = message.useAttendanceMethod === true;
-    
+
     // Track if response has been sent to avoid calling sendResponse multiple times
     let responseSent = false;
-    
+
     // Helper function to safely send response
     // Prevents calling sendResponse multiple times and handles closed channels gracefully
     const safeSendResponse = (response) => {
@@ -1761,7 +1858,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.log('Response already sent, skipping duplicate response');
         return;
       }
-      
+
       try {
         sendResponse(response);
         responseSent = true;
@@ -1772,12 +1869,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         responseSent = true; // Mark as sent to prevent retries
       }
     };
-    
+
     // Choose scraping method based on flag
     const scrapingPromise = useAttendanceMethod
-      ? startScrapingFromAttendance(message.waitTime)
-      : startScraping(message.startDate, message.endDate, message.waitTime);
-    
+      ? startScrapingFromAttendance()
+      : startScraping(message.startDate, message.endDate, WAIT_TIMES.DEFAULT_WAIT_TIME);
+
     // Handle async response - must return true to keep channel open
     scrapingPromise
       .then(async (result) => {
@@ -1785,7 +1882,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.log('Scraping completed:', result);
         if (result.success && result.data) {
           console.log('Scraped data (JSON):', JSON.stringify(result.data, null, 2));
-          
+
           // Save scraped classes to storage (merge or replace based on user choice)
           const mergeMode = message.mergeMode === true; // Default to false if not provided
           await saveScrapedClasses(result.data, mergeMode);
@@ -1804,13 +1901,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     return true; // Keep channel open for async response
   }
-  
+
   if (message.action === 'progressUpdate') {
     // Forward progress updates to all popup windows
-    chrome.runtime.sendMessage(message).catch(() => {});
+    chrome.runtime.sendMessage(message).catch(() => { });
     return false; // No response needed
   }
-  
+
   return false;
 });
 
