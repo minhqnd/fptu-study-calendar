@@ -76,7 +76,7 @@
     "description": "Trạng thái đang gửi yêu cầu"
   },
   "progressScraping": {
-    "message": "Đang trích xuất tuần $WEEK$/$TOTAL$...",
+    "message": "Đang trích xuất môn $COURSE$/$TOTAL$...",
     "description": "Trạng thái đang trích xuất",
     "placeholders": {
       "WEEK": {
@@ -94,8 +94,8 @@
     "description": "Thông báo thành công"
   },
   "progressSuccessWithWeeks": {
-    "message": "Đã trích xuất $1/$2 tuần",
-    "description": "Thông báo thành công với số tuần",
+    "message": "Đã trích xuất $1/$2 môn",
+    "description": "Thông báo thành công với số môn",
     "placeholders": {
       "SUCCESS": {
         "content": "$1",
@@ -164,7 +164,7 @@
     "description": "Thông điệp overlay"
   },
   "overlayProgress": {
-    "message": "Đang trích xuất tuần $WEEK$/$TOTAL$",
+    "message": "Đang trích xuất môn $COURSE$/$TOTAL$",
     "description": "Tiến trình trích xuất trong overlay",
     "placeholders": {
       "WEEK": {
@@ -182,8 +182,8 @@
     "description": "Thông báo hoàn tất trong overlay"
   },
   "overlayCompleteWithWeeks": {
-    "message": "Đã trích xuất $1/$2 tuần",
-    "description": "Thông báo hoàn tất trong overlay với số tuần",
+    "message": "Đã trích xuất $1/$2 môn",
+    "description": "Thông báo hoàn tất trong overlay với số môn",
     "placeholders": {
       "SUCCESS": {
         "content": "$1",
