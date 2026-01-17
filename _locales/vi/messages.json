@@ -331,13 +331,9 @@
     "message": "Địa điểm:",
     "description": "Nhãn địa điểm trong form chỉnh sửa"
   },
-  "editMeetUrl": {
-    "message": "Meet URL:",
-    "description": "Nhãn Meet URL trong form chỉnh sửa"
-  },
-  "editStatus": {
-    "message": "Trạng thái:",
-    "description": "Nhãn trạng thái trong form chỉnh sửa"
+  "editNotes": {
+    "message": "Ghi chú:",
+    "description": "Nhãn ghi chú trong form chỉnh sửa"
   },
   "statusNotYet": {
     "message": "Chưa diễn ra",

@@ -84,7 +84,7 @@ function getLuminance(hex) {
 function getTextColor(bgHex) {
   const isDark = getCurrentTheme() === 'dark';
   const luminance = getLuminance(bgHex);
-  
+
   if (isDark) {
     // Dark theme: use light text unless background is very light
     return luminance > 0.6 ? 'dark' : 'light';
@@ -118,25 +118,25 @@ function getCurrentTheme() {
  */
 function getTintedBackground(baseColor, isOnline) {
   const isDark = getCurrentTheme() === 'dark';
-  
+
   // Convert hex to RGB
   const r = parseInt(baseColor.slice(1, 3), 16);
   const g = parseInt(baseColor.slice(3, 5), 16);
   const b = parseInt(baseColor.slice(5, 7), 16);
-  
+
   if (isDark) {
     // Dark theme: create a darker tint on neutral charcoal base (#262626)
     const darkBaseR = 38;
     const darkBaseG = 38;
     const darkBaseB = 38;
     const tintFactor = 0.85;
-    
+
     // Blend with color at reduced saturation for dark theme
     const colorMix = 0.15; // 15% of original color
     const tintedR = Math.round(r * colorMix + darkBaseR * tintFactor);
     const tintedG = Math.round(g * colorMix + darkBaseG * tintFactor);
     const tintedB = Math.round(b * colorMix + darkBaseB * tintFactor);
-    
+
     return `#${tintedR.toString(16).padStart(2, '0')}${tintedG.toString(16).padStart(2, '0')}${tintedB.toString(16).padStart(2, '0')}`;
   } else {
     // Light theme: create a very light tint (92% white blend) for backgrounds
@@ -145,7 +145,7 @@ function getTintedBackground(baseColor, isOnline) {
     const tintedR = Math.round(r * (1 - tintFactor) + 255 * tintFactor);
     const tintedG = Math.round(g * (1 - tintFactor) + 255 * tintFactor);
     const tintedB = Math.round(b * (1 - tintFactor) + 255 * tintFactor);
-    
+
     return `#${tintedR.toString(16).padStart(2, '0')}${tintedG.toString(16).padStart(2, '0')}${tintedB.toString(16).padStart(2, '0')}`;
   }
 }
@@ -159,7 +159,7 @@ function getTintedBackground(baseColor, isOnline) {
  */
 function getClassColor(subjectCode, isOnline) {
   const palette = isOnline ? CLASS_COLORS.online : CLASS_COLORS.offline;
-  
+
   // Simple hash function for consistent color assignment
   let hash = 0;
   for (let i = 0; i < subjectCode.length; i++) {
@@ -167,7 +167,7 @@ function getClassColor(subjectCode, isOnline) {
     hash = ((hash << 5) - hash) + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
-  
+
   // Map hash to palette index
   const index = Math.abs(hash) % palette.length;
   return palette[index];
@@ -232,17 +232,17 @@ function getClassesForWeek(weekStart) {
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 6);
   weekEnd.setHours(23, 59, 59, 999);
-  
+
   // Normalize dates to start of day for comparison
   const weekStartNormalized = new Date(weekStart);
   weekStartNormalized.setHours(0, 0, 0, 0);
   const weekEndNormalized = new Date(weekEnd);
   weekEndNormalized.setHours(23, 59, 59, 999);
-  
+
   return allClasses.filter(cls => {
     const classDate = new Date(cls.date + 'T00:00:00');
     classDate.setHours(0, 0, 0, 0);
-    
+
     // Only include classes that fall within the exact week date range (including year)
     return classDate >= weekStartNormalized && classDate <= weekEndNormalized;
   });
@@ -251,14 +251,14 @@ function getClassesForWeek(weekStart) {
 // Get all weeks that contain classes
 function getAllWeeksWithClasses() {
   if (allClasses.length === 0) return [];
-  
+
   const weekStarts = new Set();
   allClasses.forEach(cls => {
     const classDate = new Date(cls.date);
     const weekStart = getWeekStart(classDate);
     weekStarts.add(weekStart.toISOString().split('T')[0]);
   });
-  
+
   return Array.from(weekStarts)
     .map(dateStr => new Date(dateStr))
     .sort((a, b) => a - b);
@@ -299,16 +299,16 @@ function renderWeekView() {
 
   const weekEnd = new Date(currentWeekStart);
   weekEnd.setDate(weekEnd.getDate() + 6);
-  
+
   // Update week selector
   const weekSelector = document.getElementById('weekSelector');
   const allWeeks = getAllWeeksWithClasses();
-  
+
   // If no classes, add current week
   if (allWeeks.length === 0) {
     allWeeks.push(currentWeekStart);
   }
-  
+
   weekSelector.innerHTML = '';
   allWeeks.forEach(weekStart => {
     const option = createElement('option', '', formatWeekForSelector(weekStart));
@@ -323,7 +323,7 @@ function renderWeekView() {
   console.log('Current week start:', currentWeekStart);
   console.log('Week classes found:', weekClasses.length);
   console.log('All classes:', allClasses.length);
-  
+
   const grid = document.getElementById('weekGrid');
   grid.innerHTML = '';
 
@@ -340,33 +340,33 @@ function renderWeekView() {
   emptyHeaderCell.style.gridRow = 1;
   emptyHeaderCell.style.gridColumn = 1;
   grid.appendChild(emptyHeaderCell);
-  
+
   // Add day headers
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   for (let i = 0; i < 7; i++) {
     const day = new Date(currentWeekStart);
     day.setDate(day.getDate() + i);
     day.setHours(0, 0, 0, 0);
-    
+
     const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     const dayName = dayNames[day.getDay()];
     const dayHeader = createElement('div', 'day-header', '');
-    
+
     // Check if this is today
     if (day.getTime() === today.getTime()) {
       dayHeader.classList.add('today');
     }
-    
+
     const dayNameEl = createElement('div', 'day-header-name', dayName);
     const dayDateEl = createElement('div', 'day-header-date', formatDate(day));
-    
+
     dayHeader.appendChild(dayNameEl);
     dayHeader.appendChild(dayDateEl);
     grid.appendChild(dayHeader);
   }
-  
+
   // Update header subtitle with week range
   const subtitleEl = document.getElementById('headerSubtitle');
   if (subtitleEl) {
@@ -385,7 +385,7 @@ function renderWeekView() {
   slots.forEach((slotLabel, slotIndex) => {
     const hasClasses = slotsWithClasses.has(slotIndex);
     const gridRow = slotIndex + 2; // Start at row 2 (after header row)
-    
+
     // Slot label
     const slotLabelEl = createElement('div', 'time-slot', slotLabel);
     slotLabelEl.id = `slot-label-${slotIndex}`;
@@ -396,7 +396,7 @@ function renderWeekView() {
     slotLabelEl.style.gridRow = gridRow;
     slotLabelEl.style.gridColumn = 1;
     grid.appendChild(slotLabelEl);
-    
+
     // Day cells for this slot
     for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
       const dayCell = createElement('div', 'day-cell', '');
@@ -415,25 +415,25 @@ function renderWeekView() {
     classDate.setHours(0, 0, 0, 0);
     const weekStartDate = new Date(currentWeekStart);
     weekStartDate.setHours(0, 0, 0, 0);
-    
+
     // Calculate day index - use exact date matching (including year)
     let dayIndex = -1;
-    
+
     // Find which day of the week this class belongs to by comparing full dates
     for (let i = 0; i < 7; i++) {
       const weekDay = new Date(weekStartDate);
       weekDay.setDate(weekDay.getDate() + i);
       weekDay.setHours(0, 0, 0, 0);
-      
+
       // Compare full dates (year, month, day) to ensure correct placement
       if (weekDay.getTime() === classDate.getTime()) {
         dayIndex = i;
         break;
       }
     }
-    
+
     console.log('Processing class:', cls.subjectCode, 'date:', cls.date, 'dayIndex:', dayIndex, 'slot:', cls.slot);
-    
+
     if (dayIndex >= 0 && dayIndex < 7 && cls.slot !== undefined && cls.slot !== null) {
       const slotIndex = cls.slot;
       if (slotIndex >= 0 && slotIndex <= 12) {
@@ -441,13 +441,13 @@ function renderWeekView() {
         if (dayCell) {
           // Mark cell as having classes
           dayCell.classList.add('has-classes');
-          
+
           // Also mark the slot label as having classes
           const slotLabel = document.getElementById(`slot-label-${slotIndex}`);
           if (slotLabel) {
             slotLabel.classList.add('has-classes');
           }
-          
+
           const block = createClassBlock(cls);
           dayCell.appendChild(block);
           console.log('Added class to cell:', `day-cell-${dayIndex}-slot-${slotIndex}`);
@@ -467,15 +467,15 @@ function renderWeekView() {
 function createClassBlock(cls) {
   const block = createElement('div', `class-block ${cls.isOnline ? 'online' : 'offline'}`, '');
   block.dataset.classId = cls.activityId;
-  
+
   // Get assigned base color for this class
   const baseColor = getClassColor(cls.subjectCode, cls.isOnline);
-  
+
   // Use tinted background for better readability with dark text
   // This creates a soft tinted background with a stronger accent border
   const bgColor = getTintedBackground(baseColor, cls.isOnline);
   const textColor = getTextColor(bgColor);
-  
+
   // Apply colors via inline styles for dynamic assignment
   // Use tinted background with strong accent border
   block.style.backgroundColor = bgColor;
@@ -484,13 +484,13 @@ function createClassBlock(cls) {
   block.style.borderLeftStyle = 'solid';
   block.style.color = textColor === 'light' ? '#ffffff' : 'var(--color-text-primary)';
   block.style.setProperty('--base-color', baseColor);
-  
+
   // Add data attribute for CSS targeting and store base color for accents
   block.dataset.textColor = textColor;
   block.dataset.baseColor = baseColor;
-  
+
   const timeStr = `${cls.time.start} - ${cls.time.end}`;
-  
+
   // Build badge group (Online + Relocated)
   let badgesHtml = '';
   if (cls.isOnline || cls.isRelocated) {
@@ -503,7 +503,7 @@ function createClassBlock(cls) {
     }
     badgesHtml += '</div>';
   }
-  
+
   // Build links section (Materials, Meet, and EduNext) - will be pushed to bottom via flexbox
   // Materials link is always first (leftmost)
   let linksHtml = '';
@@ -518,7 +518,7 @@ function createClassBlock(cls) {
     if (linksHtml) linksHtml += ' ';
     linksHtml += `<a href="${cls.edunextUrl}" target="_blank" class="class-link" onclick="event.stopPropagation();">📚 ${getMessage('classEduNext')}</a>`;
   }
-  
+
   block.innerHTML = `
     <div class="class-content">
       <div class="class-header">
@@ -540,17 +540,17 @@ function createClassBlock(cls) {
 function getFilteredClasses() {
   const subjectFilter = document.getElementById('subjectFilter');
   const statusFilter = document.getElementById('statusFilter');
-  
+
   const selectedSubject = subjectFilter ? subjectFilter.value : 'all';
   const selectedStatus = statusFilter ? statusFilter.value : 'all';
-  
+
   let filtered = [...allClasses];
-  
+
   // Filter by subject
   if (selectedSubject !== 'all') {
     filtered = filtered.filter(cls => cls.subjectCode === selectedSubject);
   }
-  
+
   // Filter by online/offline status
   if (selectedStatus !== 'all') {
     if (selectedStatus === 'online') {
@@ -559,7 +559,7 @@ function getFilteredClasses() {
       filtered = filtered.filter(cls => cls.isOnline !== true);
     }
   }
-  
+
   return filtered;
 }
 
@@ -599,7 +599,7 @@ function renderListView() {
     const dayClasses = classesByDay[dateKey];
     const firstClass = dayClasses[0];
     const date = new Date(firstClass.date);
-    
+
     // Get day name in Vietnamese
     const dayNames = [
       getMessage('daySunday'),
@@ -612,7 +612,7 @@ function renderListView() {
     ];
     const dayName = dayNames[date.getDay()];
     const formattedDate = formatDate(firstClass.date);
-    
+
     // Create day group
     const dayGroup = createElement('div', 'day-group', '');
     const dayHeader = createElement('div', 'day-header', '');
@@ -620,19 +620,19 @@ function renderListView() {
       <span>${dayName}</span>
       <span class="day-header-date">${formattedDate}</span>
     `;
-    
+
     const dayClassesContainer = createElement('div', 'day-classes', '');
-    
+
     dayClasses.forEach(cls => {
       const item = createElement('div', 'class-item', '');
-      
+
       // Get assigned base color for this class
       const baseColor = getClassColor(cls.subjectCode, cls.isOnline);
-      
+
       // Use tinted background for consistency with calendar view
       const bgColor = getTintedBackground(baseColor, cls.isOnline);
       const textColor = getTextColor(bgColor);
-      
+
       // Apply colors via inline styles (consistent with calendar view)
       item.style.backgroundColor = bgColor;
       item.style.borderLeftColor = baseColor;
@@ -642,9 +642,9 @@ function renderListView() {
       item.style.setProperty('--base-color', baseColor);
       item.dataset.textColor = textColor;
       item.dataset.baseColor = baseColor;
-      
+
       const timeStr = `${cls.time.start} - ${cls.time.end}`;
-      
+
       // Build badge group (Online + Relocated) - same as calendar view
       let badgesHtml = '';
       if (cls.isOnline || cls.isRelocated) {
@@ -657,7 +657,7 @@ function renderListView() {
         }
         badgesHtml += '</div>';
       }
-      
+
       // Build links section (Materials, Meet, and EduNext) - same as calendar view
       let linksHtml = '';
       if (cls.materialsUrl) {
@@ -671,7 +671,7 @@ function renderListView() {
         if (linksHtml) linksHtml += ' ';
         linksHtml += `<a href="${cls.edunextUrl}" target="_blank" class="class-link" onclick="event.stopPropagation();">📚 ${getMessage('classEduNext')}</a>`;
       }
-      
+
       // Use same structure as calendar view for consistency, optimized for list scanning
       item.innerHTML = `
         <div class="class-content">
@@ -689,12 +689,12 @@ function renderListView() {
       item.addEventListener('click', () => openEditModal(cls));
       dayClassesContainer.appendChild(item);
     });
-    
+
     dayGroup.appendChild(dayHeader);
     dayGroup.appendChild(dayClassesContainer);
     listContent.appendChild(dayGroup);
   });
-  
+
   // Update sidebar with statistics
   updateListSidebar(sortedClasses);
 }
@@ -704,7 +704,7 @@ function updateListSidebar(filteredClasses) {
   // Update total count (for filtered classes)
   const totalCount = filteredClasses.length;
   document.getElementById('totalClassCount').textContent = totalCount;
-  
+
   // Calculate subject counts (for filtered classes - shown in statistics)
   const subjectCounts = {};
   filteredClasses.forEach(cls => {
@@ -713,11 +713,11 @@ function updateListSidebar(filteredClasses) {
     }
     subjectCounts[cls.subjectCode]++;
   });
-  
+
   // Render subject counts (for filtered classes)
   const subjectCountsContainer = document.getElementById('subjectCounts');
   subjectCountsContainer.innerHTML = '';
-  
+
   const sortedFilteredSubjects = Object.keys(subjectCounts).sort();
   sortedFilteredSubjects.forEach(subjectCode => {
     const count = subjectCounts[subjectCode];
@@ -728,19 +728,19 @@ function updateListSidebar(filteredClasses) {
     `;
     subjectCountsContainer.appendChild(item);
   });
-  
+
   // Update subject filter dropdown (always show all available subjects from allClasses)
   const subjectFilter = document.getElementById('subjectFilter');
   if (subjectFilter) {
     const currentValue = subjectFilter.value;
-    
+
     // Get all unique subjects from allClasses
     const allSubjects = new Set();
     allClasses.forEach(cls => {
       allSubjects.add(cls.subjectCode);
     });
     const sortedAllSubjects = Array.from(allSubjects).sort();
-    
+
     subjectFilter.innerHTML = `<option value="all">${getMessage('filterAll')}</option>`;
     sortedAllSubjects.forEach(subjectCode => {
       const option = createElement('option', '', '');
@@ -748,7 +748,7 @@ function updateListSidebar(filteredClasses) {
       option.textContent = subjectCode;
       subjectFilter.appendChild(option);
     });
-    
+
     // Restore previous selection if it still exists
     if (currentValue && (currentValue === 'all' || sortedAllSubjects.includes(currentValue))) {
       subjectFilter.value = currentValue;
@@ -790,8 +790,9 @@ function openEditModal(cls) {
   document.getElementById('editTimeStart').value = cls.time.start;
   document.getElementById('editTimeEnd').value = cls.time.end;
   document.getElementById('editLocation').value = cls.location || '';
-  document.getElementById('editMeetUrl').value = cls.meetUrl || '';
-  document.getElementById('editStatus').value = cls.status || 'Not yet';
+  // Build notes from lecturer, groupName, sessionNo (or use existing notes)
+  const notes = cls.notes || [cls.lecturer, cls.groupName, cls.sessionNo ? `Session: ${cls.sessionNo}` : ''].filter(Boolean).join(' - ');
+  document.getElementById('editNotes').value = notes;
 
   modal.classList.add('active');
 }
@@ -820,12 +821,11 @@ async function saveEditedClass(formData) {
       end: formData.timeEnd
     },
     location: formData.location,
-    meetUrl: formData.meetUrl || null,
+    notes: formData.notes || null,
     edunextUrl: allClasses[index].edunextUrl || null, // Preserve edunextUrl
     materialsUrl: allClasses[index].materialsUrl || null, // Preserve materialsUrl
     isRelocated: allClasses[index].isRelocated || false, // Preserve isRelocated
-    status: formData.status,
-    isOnline: formData.meetUrl ? true : allClasses[index].isOnline
+    isOnline: allClasses[index].isOnline || false
   };
 
   await saveClasses();
@@ -869,7 +869,7 @@ function initI18n() {
       }
     }
   });
-  
+
   // Set footer "Made by" text
   const footerMadeByText = document.getElementById('footerMadeByText');
   if (footerMadeByText) {
@@ -884,10 +884,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (headerIcon && typeof chrome !== 'undefined' && chrome.runtime) {
     headerIcon.src = chrome.runtime.getURL('icons/icon.png');
   }
-  
+
   // Initialize i18n
   initI18n();
-  
+
   // Load and apply theme before rendering
   async function loadTheme() {
     try {
@@ -914,7 +914,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await loadTheme();
-  
+
   // Initialize i18n for clear data button
   const clearDataBtn = document.getElementById('clearDataBtn');
   const clearDataBtnText = document.getElementById('clearDataBtnText');
@@ -925,16 +925,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (clearDataBtn) {
     clearDataBtn.title = getMessage('clearCalendarData');
   }
-  
+
   // Initialize i18n for today button
   const todayBtn = document.getElementById('todayBtn');
   if (todayBtn) {
     todayBtn.title = getMessage('today');
   }
-  
+
   // Initialize export button state (will be updated after loadClasses)
   updateExportButtonState();
-  
+
   loadClasses();
 
   // View toggle
@@ -957,13 +957,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // List view filters
   const subjectFilter = document.getElementById('subjectFilter');
   const statusFilter = document.getElementById('statusFilter');
-  
+
   if (subjectFilter) {
     subjectFilter.addEventListener('change', () => {
       renderListView();
     });
   }
-  
+
   if (statusFilter) {
     statusFilter.addEventListener('change', () => {
       renderListView();
@@ -1002,17 +1002,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const weekSelector = document.getElementById('weekSelector');
     const currentWeekValue = currentWeekStart.toISOString().split('T')[0];
     const allWeeks = getAllWeeksWithClasses();
-    
+
     // Check if current week is in the list
     const weekExists = allWeeks.some(w => w.toISOString().split('T')[0] === currentWeekValue);
-    
+
     if (!weekExists) {
       // Add current week to selector if not present
       const option = createElement('option', '', formatWeekForSelector(currentWeekStart));
       option.value = currentWeekValue;
       option.selected = true;
       weekSelector.appendChild(option);
-      
+
       // Sort options
       const options = Array.from(weekSelector.options);
       options.sort((a, b) => new Date(a.value) - new Date(b.value));
@@ -1033,8 +1033,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       timeStart: document.getElementById('editTimeStart').value,
       timeEnd: document.getElementById('editTimeEnd').value,
       location: document.getElementById('editLocation').value,
-      meetUrl: document.getElementById('editMeetUrl').value,
-      status: document.getElementById('editStatus').value
+      notes: document.getElementById('editNotes').value
     };
     await saveEditedClass(formData);
   });
@@ -1048,15 +1047,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Get classes from storage (all classes, not filtered)
       const result = await chrome.storage.local.get(['scrapedClasses']);
       const classes = result.scrapedClasses || [];
-      
+
       if (classes.length === 0) {
         alert(getMessage('emptyState') + '. ' + 'Vui lòng trích xuất lịch học trước.');
         return;
       }
-      
+
       // Export to ICS
       exportToIcs(classes);
-      
+
       // Show brief success message (optional - could add a toast notification)
       console.log(`Exported ${classes.length} classes to ICS file`);
     } catch (error) {
@@ -1069,25 +1068,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('clearDataBtn').addEventListener('click', async () => {
     // Show confirmation dialog with localized message
     const confirmed = confirm(getMessage('confirmClearCalendarData'));
-    
+
     if (!confirmed) {
       return;
     }
-    
+
     try {
       // Clear data from storage
       await chrome.storage.local.remove(['scrapedClasses']);
-      
+
       // Clear local state
       allClasses = [];
       currentWeekStart = null;
-      
+
       // Show empty state
       showEmptyState();
-      
+
       // Update export button state
       updateExportButtonState();
-      
+
       console.log('All calendar data cleared');
     } catch (error) {
       console.error('Error clearing calendar data:', error);

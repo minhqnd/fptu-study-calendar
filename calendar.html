@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +9,7 @@
     /* ========================================
        DESIGN SYSTEM - CSS VARIABLES
        ======================================== */
-    
+
     :root {
       /* Neutral Color Palette */
       --color-gray-50: #fafafa;
@@ -21,12 +22,12 @@
       --color-gray-700: #404040;
       --color-gray-800: #262626;
       --color-gray-900: #171717;
-      
+
       /* Single Accent Color (Muted Blue) */
       --color-accent: #3b82f6;
       --color-accent-hover: #2563eb;
       --color-accent-light: #eff6ff;
-      
+
       /* Semantic Colors */
       --color-background: var(--color-gray-50);
       --color-surface: #ffffff;
@@ -35,7 +36,7 @@
       --color-text-secondary: var(--color-gray-600);
       --color-text-tertiary: var(--color-gray-500);
       --color-text-muted: var(--color-gray-400);
-      
+
       /* Spacing Scale (4px base unit) */
       --space-xs: 4px;
       --space-sm: 8px;
@@ -43,7 +44,7 @@
       --space-lg: 24px;
       --space-xl: 32px;
       --space-2xl: 48px;
-      
+
       /* Typography Scale */
       --font-size-xs: 11px;
       --font-size-sm: 13px;
@@ -53,24 +54,24 @@
       --font-size-xl: 20px;
       --font-size-2xl: 24px;
       --font-size-3xl: 28px;
-      
+
       --font-weight-normal: 400;
       --font-weight-medium: 500;
       --font-weight-semibold: 600;
       --font-weight-bold: 700;
-      
+
       /* Line Heights */
       --line-height-tight: 1.2;
       --line-height-normal: 1.5;
       --line-height-relaxed: 1.75;
-      
+
       /* Border */
       --border-width: 1px;
       --border-radius-sm: 6px;
       --border-radius-md: 10px;
       --border-radius-lg: 12px;
       --border-radius-xl: 16px;
-      
+
       /* Transitions */
       --transition-fast: 0.15s ease;
       --transition-base: 0.2s ease;
@@ -79,19 +80,19 @@
     /* ========================================
        DARK THEME
        ======================================== */
-    
+
     [data-theme="dark"] {
       /* Neutral Charcoal Palette - Dark Theme */
       --color-background: #1f1f1f;
       --color-surface: #262626;
       --color-border: rgba(255, 255, 255, 0.1);
-      
+
       /* Text Colors - High Contrast, Neutral */
       --color-text-primary: #e8e8e8;
       --color-text-secondary: #b8b8b8;
       --color-text-tertiary: #909090;
       --color-text-muted: #707070;
-      
+
       /* Accent colors for dark mode - Subtle tints on charcoal */
       --color-accent-light: rgba(14, 165, 233, 0.18);
     }
@@ -103,13 +104,13 @@
         --color-background: #1f1f1f;
         --color-surface: #262626;
         --color-border: rgba(255, 255, 255, 0.1);
-        
+
         /* Text Colors - High Contrast, Neutral */
         --color-text-primary: #e8e8e8;
         --color-text-secondary: #b8b8b8;
         --color-text-tertiary: #909090;
         --color-text-muted: #707070;
-        
+
         /* Accent colors for dark mode - Subtle tints on charcoal */
         --color-accent-light: rgba(14, 165, 233, 0.18);
       }
@@ -118,7 +119,7 @@
     /* ========================================
        RESET & BASE STYLES
        ======================================== */
-    
+
     * {
       margin: 0;
       padding: 0;
@@ -139,7 +140,7 @@
     /* ========================================
        HEADER SECTION
        ======================================== */
-    
+
     .header {
       background: var(--color-surface);
       padding: var(--space-lg) var(--space-xl);
@@ -199,7 +200,7 @@
     /* ========================================
        BUTTONS
        ======================================== */
-    
+
     .btn {
       padding: var(--space-sm) var(--space-md);
       border: var(--border-width) solid var(--color-border);
@@ -217,7 +218,7 @@
       justify-content: center;
       gap: 6px;
     }
-    
+
     .btn svg {
       flex-shrink: 0;
       vertical-align: middle;
@@ -371,7 +372,7 @@
       pointer-events: none;
       vertical-align: middle;
     }
-    
+
     .btn.btn-clear-data span {
       display: inline-block;
       vertical-align: middle;
@@ -380,7 +381,7 @@
     /* ========================================
        PILL SWITCHER
        ======================================== */
-    
+
     .pill-switcher {
       display: inline-flex;
       background: var(--color-gray-100);
@@ -395,7 +396,7 @@
       background: #2a2a2a;
       border-color: rgba(255, 255, 255, 0.12);
     }
-    
+
     .pill-switcher-btn {
       flex: 1;
       padding: var(--space-sm) var(--space-lg);
@@ -422,7 +423,7 @@
       vertical-align: middle;
       fill: currentColor;
     }
-    
+
     .pill-switcher-btn:hover:not(.active) {
       color: var(--color-text-primary);
       background: var(--color-gray-50);
@@ -432,7 +433,7 @@
       background: #2f2f2f;
       color: var(--color-text-primary);
     }
-    
+
     .pill-switcher-btn.active {
       background: var(--color-surface);
       color: var(--color-text-primary);
@@ -449,7 +450,7 @@
     /* ========================================
        WEEK VIEW
        ======================================== */
-    
+
     .week-view {
       background: var(--color-surface);
       border: var(--border-width) solid var(--color-border);
@@ -504,7 +505,7 @@
     /* ========================================
        CALENDAR GRID
        ======================================== */
-    
+
     .week-grid {
       display: grid;
       grid-template-columns: 90px repeat(7, 1fr);
@@ -517,14 +518,14 @@
       overflow-x: auto;
       overflow: hidden;
     }
-    
-    .week-grid > .time-slot,
-    .week-grid > .day-cell {
+
+    .week-grid>.time-slot,
+    .week-grid>.day-cell {
       margin-top: var(--border-width);
     }
-    
-    .week-grid > .time-slot:first-of-type,
-    .week-grid > .day-cell:first-of-type {
+
+    .week-grid>.time-slot:first-of-type,
+    .week-grid>.day-cell:first-of-type {
       margin-top: 0;
     }
 
@@ -559,13 +560,13 @@
     [data-theme="dark"] .day-header {
       background: #2a2a2a;
     }
-    
+
     /* Week view: no margin/border to remove gray stripe */
     .week-grid .day-header {
       margin-bottom: 0;
       border-bottom: 0;
     }
-    
+
     .day-header.today {
       background: var(--color-accent-light);
     }
@@ -586,7 +587,7 @@
       color: var(--color-text-secondary);
       font-weight: var(--font-weight-normal);
     }
-    
+
     .day-header.today .day-header-name {
       color: var(--color-accent);
       font-weight: var(--font-weight-bold);
@@ -612,7 +613,7 @@
     [data-theme="dark"] .day-cell {
       border-top-color: rgba(255, 255, 255, 0.08);
     }
-    
+
     .day-cell:first-of-type {
       border-top: 0;
     }
@@ -620,7 +621,7 @@
     /* ========================================
        EVENT CARDS
        ======================================== */
-    
+
     .class-block {
       width: 100%;
       padding: var(--space-sm) var(--space-md);
@@ -638,12 +639,12 @@
       flex: 1 1 auto;
       min-height: fit-content;
     }
-    
+
     .class-block:last-child {
       margin-bottom: 0;
       flex: 1 1 0;
     }
-    
+
     /* Main content area - grows to fill space */
     .class-content {
       display: flex;
@@ -651,7 +652,7 @@
       gap: var(--space-xs);
       flex: 1 1 auto;
     }
-    
+
     /* Header: subject code + badges */
     .class-header {
       display: flex;
@@ -676,7 +677,7 @@
       line-height: var(--line-height-tight);
       letter-spacing: -0.01em;
     }
-    
+
     /* Metadata section: location and time */
     .class-meta {
       display: flex;
@@ -692,13 +693,13 @@
     .class-block[data-text-color="dark"] .class-location {
       color: var(--color-text-tertiary);
     }
-    
+
     .class-location {
       font-size: var(--font-size-xs);
       font-weight: var(--font-weight-normal);
       line-height: var(--line-height-normal);
     }
-    
+
     /* Time: more prominent than location but less than subject code */
     .class-block[data-text-color="light"] .class-time {
       color: rgba(255, 255, 255, 0.9);
@@ -722,7 +723,7 @@
       gap: 4px;
       flex-shrink: 0;
     }
-    
+
     .class-badge {
       display: inline-flex;
       align-items: center;
@@ -735,22 +736,22 @@
       line-height: 1.2;
       white-space: nowrap;
     }
-    
+
     .class-badge-online {
       background: rgba(16, 185, 129, 0.15);
       color: #059669;
     }
-    
+
     .class-block[data-text-color="light"] .class-badge-online {
       background: rgba(255, 255, 255, 0.2);
       color: rgba(255, 255, 255, 0.95);
     }
-    
+
     .class-badge-relocated {
       background: #f59e0b;
       color: #ffffff;
     }
-    
+
     .class-block[data-text-color="light"] .class-badge-relocated {
       background: rgba(245, 158, 11, 0.9);
       color: #ffffff;
@@ -792,7 +793,7 @@
     /* ========================================
        LIST VIEW
        ======================================== */
-    
+
     .list-view {
       background: var(--color-surface);
       border: var(--border-width) solid var(--color-border);
@@ -808,18 +809,18 @@
     .list-view.active {
       display: block;
     }
-    
+
     .list-view-container {
       display: flex;
       gap: var(--space-xl);
       align-items: flex-start;
     }
-    
+
     .list-content {
       flex: 1 1 auto;
       min-width: 0;
     }
-    
+
     .list-sidebar {
       flex: 0 0 280px;
       background: var(--color-surface);
@@ -835,15 +836,15 @@
     [data-theme="dark"] .list-sidebar {
       border-color: rgba(255, 255, 255, 0.1);
     }
-    
+
     .sidebar-section {
       margin-bottom: var(--space-xl);
     }
-    
+
     .sidebar-section:last-child {
       margin-bottom: 0;
     }
-    
+
     .sidebar-title {
       font-size: var(--font-size-sm);
       font-weight: var(--font-weight-semibold);
@@ -852,31 +853,31 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-    
+
     .sidebar-stat {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
       padding: var(--space-sm) 0;
     }
-    
+
     .stat-label {
       font-size: var(--font-size-sm);
       color: var(--color-text-secondary);
     }
-    
+
     .stat-value {
       font-size: var(--font-size-lg);
       font-weight: var(--font-weight-bold);
       color: var(--color-text-primary);
     }
-    
+
     .subject-counts {
       display: flex;
       flex-direction: column;
       gap: var(--space-xs);
     }
-    
+
     .subject-count-item {
       display: flex;
       justify-content: space-between;
@@ -890,25 +891,25 @@
       background: #2a2a2a;
       font-size: var(--font-size-sm);
     }
-    
+
     .subject-count-code {
       font-weight: var(--font-weight-semibold);
       color: var(--color-text-primary);
     }
-    
+
     .subject-count-number {
       color: var(--color-text-secondary);
       font-weight: var(--font-weight-medium);
     }
-    
+
     .filter-group {
       margin-bottom: var(--space-md);
     }
-    
+
     .filter-group:last-child {
       margin-bottom: 0;
     }
-    
+
     .filter-label {
       display: block;
       font-size: var(--font-size-xs);
@@ -918,7 +919,7 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-    
+
     .filter-select {
       width: 100%;
       padding: var(--space-sm) var(--space-md);
@@ -931,21 +932,21 @@
       font-family: inherit;
       transition: border-color var(--transition-base);
     }
-    
+
     .filter-select:focus {
       outline: none;
       border-color: var(--color-accent);
     }
-    
+
     /* Day group header */
     .day-group {
       margin-bottom: var(--space-lg);
     }
-    
+
     .day-group:last-child {
       margin-bottom: 0;
     }
-    
+
     .day-header {
       font-size: var(--font-size-sm);
       font-weight: var(--font-weight-semibold);
@@ -961,12 +962,12 @@
     [data-theme="dark"] .day-header {
       border-bottom-color: rgba(255, 255, 255, 0.1);
     }
-    
+
     .day-header-date {
       color: var(--color-text-secondary);
       font-weight: var(--font-weight-normal);
     }
-    
+
     .day-classes {
       display: flex;
       flex-direction: column;
@@ -1000,7 +1001,7 @@
       filter: brightness(0.96);
       transform: translateY(-1px);
     }
-    
+
     /* Reuse calendar view styles for consistency */
     .class-item .class-content {
       display: flex;
@@ -1008,36 +1009,36 @@
       gap: var(--space-xs);
       flex: 1 1 auto;
     }
-    
+
     .class-item .class-header {
       display: flex;
       align-items: center;
       gap: var(--space-md);
       flex-wrap: wrap;
     }
-    
+
     /* List view: time next to subject code for primary cluster */
     .class-item .class-header .class-name {
       flex: 0 0 auto;
     }
-    
+
     .class-item .class-header .class-time {
       white-space: nowrap;
       flex-shrink: 0;
       flex: 0 0 auto;
     }
-    
+
     .class-item .class-header .class-badges {
       margin-left: auto;
       flex-shrink: 0;
     }
-    
+
     .class-item .class-meta {
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
-    
+
     .class-item .class-links {
       margin-top: var(--space-xs);
       padding-top: var(--space-xs);
@@ -1047,7 +1048,7 @@
     [data-theme="dark"] .class-item .class-links {
       border-top-color: rgba(255, 255, 255, 0.08);
     }
-    
+
     .class-item[data-text-color="light"] .class-links {
       border-top-color: rgba(255, 255, 255, 0.1);
     }
@@ -1068,7 +1069,7 @@
     /* ========================================
        MODAL
        ======================================== */
-    
+
     .modal {
       display: none;
       position: fixed;
@@ -1120,7 +1121,7 @@
       flex: 1;
       margin: 0;
     }
-    
+
     .btn-delete-header {
       flex-shrink: 0;
     }
@@ -1174,7 +1175,7 @@
       margin-top: var(--space-xl);
       justify-content: flex-end;
     }
-    
+
     .form-actions .btn {
       flex: 1;
       min-width: 0;
@@ -1214,7 +1215,7 @@
     /* ========================================
        UTILITIES
        ======================================== */
-    
+
     .empty-state {
       text-align: center;
       padding: var(--space-2xl);
@@ -1225,7 +1226,7 @@
     /* ========================================
        RESPONSIVE DESIGN
        ======================================== */
-    
+
     @media (max-width: 768px) {
       body {
         padding: var(--space-md);
@@ -1282,6 +1283,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="header">
     <div class="header-title-group">
@@ -1293,8 +1295,10 @@
     </div>
     <div class="header-actions">
       <button id="clearDataBtn" class="btn btn-clear-data" title="Xóa tất cả dữ liệu lịch học">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16">
-          <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill"
+          viewBox="0 0 16 16">
+          <path
+            d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0" />
         </svg>
         <span id="clearDataBtnText">Xóa lịch học</span>
       </button>
@@ -1302,15 +1306,20 @@
     <div class="view-controls">
       <div class="pill-switcher">
         <button id="weekViewBtn" class="pill-switcher-btn active">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-week" viewBox="0 0 16 16">
-            <path d="M11 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm-3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm-5 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5z"/>
-            <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-week"
+            viewBox="0 0 16 16">
+            <path
+              d="M11 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm-3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm-5 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5z" />
+            <path
+              d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z" />
           </svg>
           <span data-i18n="viewWeek">Tuần</span>
         </button>
         <button id="listViewBtn" class="pill-switcher-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-list" viewBox="0 0 16 16">
-            <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-list"
+            viewBox="0 0 16 16">
+            <path fill-rule="evenodd"
+              d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5" />
           </svg>
           <span data-i18n="viewList">Danh sách</span>
         </button>
@@ -1322,24 +1331,30 @@
   <div id="weekView" class="week-view">
     <div class="week-navigation">
       <button id="prevWeekBtn" class="btn btn-outline">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-left" viewBox="0 0 16 16">
-          <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-left"
+          viewBox="0 0 16 16">
+          <path fill-rule="evenodd"
+            d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0" />
         </svg>
         <span data-i18n="prevWeek">Tuần trước</span>
       </button>
       <div class="week-selector-group">
         <select id="weekSelector" class="week-selector"></select>
         <button id="todayBtn" class="btn btn-outline" title="Chuyển đến tuần hiện tại">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-heart-fill" viewBox="0 0 16 16">
-            <path d="M4 .5a.5.5 0 0 0-1 0V1H2a2 2 0 0 0-2 2v1h16V3a2 2 0 0 0-2-2h-1V.5a.5.5 0 0 0-1 0V1H4zM16 14V5H0v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M8 7.993c1.664-1.711 5.825 1.283 0 5.132-5.825-3.85-1.664-6.843 0-5.132"/>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+            class="bi bi-calendar-heart-fill" viewBox="0 0 16 16">
+            <path
+              d="M4 .5a.5.5 0 0 0-1 0V1H2a2 2 0 0 0-2 2v1h16V3a2 2 0 0 0-2-2h-1V.5a.5.5 0 0 0-1 0V1H4zM16 14V5H0v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M8 7.993c1.664-1.711 5.825 1.283 0 5.132-5.825-3.85-1.664-6.843 0-5.132" />
           </svg>
           <span data-i18n="today">Hôm nay</span>
         </button>
       </div>
       <button id="nextWeekBtn" class="btn btn-outline">
         <span data-i18n="nextWeek">Tuần sau</span>
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16">
-          <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right"
+          viewBox="0 0 16 16">
+          <path fill-rule="evenodd"
+            d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708" />
         </svg>
       </button>
     </div>
@@ -1387,8 +1402,10 @@
       <div class="modal-header">
         <h2 data-i18n="editModalTitle">Chỉnh sửa lớp học</h2>
         <button type="button" id="deleteBtn" class="btn btn-danger btn-delete-header">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16">
-            <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0"/>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill"
+            viewBox="0 0 16 16">
+            <path
+              d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0" />
           </svg>
           <span data-i18n="buttonDelete">Xóa</span>
         </button>
@@ -1415,23 +1432,18 @@
           <input type="text" id="editLocation">
         </div>
         <div class="form-group">
-          <label data-i18n="editMeetUrl">Meet URL:</label>
-          <input type="url" id="editMeetUrl">
-        </div>
-        <div class="form-group">
-          <label data-i18n="editStatus">Trạng thái:</label>
-          <select id="editStatus">
-            <option value="Not yet" data-i18n="statusNotYet">Chưa diễn ra</option>
-            <option value="attended" data-i18n="statusAttended">Đã tham gia</option>
-            <option value="absent" data-i18n="statusAbsent">Vắng mặt</option>
-          </select>
+          <label data-i18n="editNotes">Ghi chú:</label>
+          <input type="text" id="editNotes" placeholder="VD: ThuyNTT135 - SE2039 - Session: 3">
         </div>
         <div class="form-actions">
           <button type="button" id="cancelBtn" class="btn btn-outline" data-i18n="buttonCancel">Hủy</button>
           <button type="submit" class="btn btn-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-floppy-fill" viewBox="0 0 16 16">
-              <path d="M0 1.5A1.5 1.5 0 0 1 1.5 0H3v5.5A1.5 1.5 0 0 0 4.5 7h7A1.5 1.5 0 0 0 13 5.5V0h.086a1.5 1.5 0 0 1 1.06.44l1.415 1.414A1.5 1.5 0 0 1 16 2.914V14.5a1.5 1.5 0 0 1-1.5 1.5H14v-5.5A1.5 1.5 0 0 0 12.5 9h-9A1.5 1.5 0 0 0 2 10.5V16h-.5A1.5 1.5 0 0 1 0 14.5z"/>
-              <path d="M3 16h10v-5.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5zm9-16H4v5.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5zM9 1h2v4H9z"/>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-floppy-fill"
+              viewBox="0 0 16 16">
+              <path
+                d="M0 1.5A1.5 1.5 0 0 1 1.5 0H3v5.5A1.5 1.5 0 0 0 4.5 7h7A1.5 1.5 0 0 0 13 5.5V0h.086a1.5 1.5 0 0 1 1.06.44l1.415 1.414A1.5 1.5 0 0 1 16 2.914V14.5a1.5 1.5 0 0 1-1.5 1.5H14v-5.5A1.5 1.5 0 0 0 12.5 9h-9A1.5 1.5 0 0 0 2 10.5V16h-.5A1.5 1.5 0 0 1 0 14.5z" />
+              <path
+                d="M3 16h10v-5.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5zm9-16H4v5.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5zM9 1h2v4H9z" />
             </svg>
             <span data-i18n="buttonSave">Lưu</span>
           </button>
@@ -1441,11 +1453,14 @@
   </div>
 
   <footer class="footer">
-    v1.1.1<span class="footer-separator">·</span><span id="footerMadeByText"></span><span class="footer-separator">·</span><a href="https://github.com/QingTian1927/fptu-study-calendar" target="_blank">GitHub</a><span class="footer-separator">·</span><a href="https://buymeacoffee.com/qingtian1927" target="_blank">Buy me a coffee</a>
+    v1.1.1<span class="footer-separator">·</span><span id="footerMadeByText"></span><span
+      class="footer-separator">·</span><a href="https://github.com/QingTian1927/fptu-study-calendar"
+      target="_blank">GitHub</a><span class="footer-separator">·</span><a href="https://buymeacoffee.com/qingtian1927"
+      target="_blank">Buy me a coffee</a>
   </footer>
 
   <script src="ics-export.js"></script>
   <script src="calendar.js"></script>
 </body>
-</html>
 
+</html>
