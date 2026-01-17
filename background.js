@@ -1323,341 +1323,208 @@ async function startScraping(startDate, endDate, waitTime) {
   }
 }
 
-// New function: Start scraping using attendance page (faster, background fetch approach)
+// New function: Start scraping using background fetch (no page navigation)
+// Works exactly like the reference script - fetches data in background from any FAP page
 async function startScrapingFromAttendance() {
-  const waitTime = WAIT_TIMES.DEFAULT_WAIT_TIME; // Use internal constant
   const errors = [];
-  let attendanceTab = null;
+  let fapTab = null;
   let shouldCloseTab = false;
-  let tabToClose = null;
-  let scrapingSuccessful = false;
 
   try {
-    // Step 1: Check login and navigate to attendance page
-    const isFirstRunFlag = await isFirstRun();
-    const cachedLoginState = await getCachedLoginState();
-    const needsLoginCheck = isFirstRunFlag || cachedLoginState === null || cachedLoginState === false;
-    const isLoggedInFromCache = cachedLoginState === true;
-
-    let fapTab = await findExistingFAPTab();
+    // Step 1: Find an existing FAP tab or create one for executing fetch
+    fapTab = await findExistingFAPTab();
 
     if (!fapTab) {
-      if (isLoggedInFromCache) {
-        console.log('Cache indicates logged in, creating tab directly to attendance page');
-        fapTab = await chrome.tabs.create({ url: ATTENDANCE_URL, active: false });
-        shouldCloseTab = true;
-        tabToClose = fapTab.id;
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-        attendanceTab = fapTab;
-      } else {
-        console.log('Creating tab to homepage for login check');
-        fapTab = await chrome.tabs.create({ url: FAP_BASE_URL, active: false });
-        shouldCloseTab = true;
-        tabToClose = fapTab.id;
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-      }
+      // Need to create a minimal FAP tab to run fetch from (for cookie context)
+      console.log('No FAP tab found, creating one for fetch context...');
+      fapTab = await chrome.tabs.create({ url: FAP_BASE_URL, active: false });
+      shouldCloseTab = true;
+      // Wait for tab to load
+      await new Promise(resolve => {
+        const listener = (tabId, changeInfo) => {
+          if (tabId === fapTab.id && changeInfo.status === 'complete') {
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(listener);
+      });
     }
 
-    // Step 2: Perform login check if needed
-    if (needsLoginCheck) {
-      const isLoggedIn = await checkLogin(fapTab.id, false);
-      if (!isLoggedIn) {
+    console.log('Using FAP tab:', fapTab.id);
+
+    // Step 2: Fetch attendance page and extract data using background fetch
+    console.log('Fetching attendance page in background...');
+
+    const attendanceResult = await chrome.scripting.executeScript({
+      target: { tabId: fapTab.id },
+      func: async (attendanceUrl) => {
+        try {
+          // Fetch attendance page
+          const response = await fetch(attendanceUrl, { credentials: 'include' });
+          const html = await response.text();
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+
+          // Check if logged in
+          const userDiv = doc.querySelector('#ctl00_divUser');
+          if (!userDiv) {
+            return { error: 'NOT_LOGGED_IN' };
+          }
+
+          // Extract courses
+          const courseDiv = doc.getElementById('ctl00_mainContent_divCourse');
+          if (!courseDiv) {
+            return { error: 'No courses found' };
+          }
+
+          const courses = [];
+          const currentBold = courseDiv.querySelector('b');
+          if (currentBold) {
+            const match = currentBold.textContent.trim().match(/(.+?)\(([A-Z0-9c]+)\)/);
+            if (match) courses.push({ code: match[2], href: null, isCurrent: true });
+          }
+          courseDiv.querySelectorAll('a').forEach(link => {
+            const match = link.textContent.trim().match(/(.+?)\(([A-Z0-9c]+)\)/);
+            if (match) courses.push({ code: match[2], href: link.getAttribute('href'), isCurrent: false });
+          });
+
+          // Parse attendance table function (inline)
+          function parseTable(tableDoc, courseCode) {
+            const table = tableDoc.querySelector('table.table-bordered');
+            if (!table) return [];
+            const data = [];
+            table.querySelectorAll('tr').forEach(row => {
+              const cells = row.querySelectorAll('td');
+              if (cells.length >= 7) {
+                const sessionNo = cells[0].textContent.trim();
+                const dateText = cells[1].querySelector('span')?.textContent.trim() || cells[1].textContent.trim();
+                const slotText = cells[2].querySelector('span')?.textContent.trim() || cells[2].textContent.trim();
+                const room = cells[3].textContent.trim();
+                const lecturer = cells[4].textContent.trim();
+                const groupName = cells[5].textContent.trim();
+                const status = cells[6].textContent.trim();
+
+                const slotMatch = slotText.match(/(\d+)_\((.+)\)/);
+                let slotNumber = null;
+                let slotTime = '';
+                if (slotMatch) {
+                  slotNumber = parseInt(slotMatch[1], 10);
+                  slotTime = `(${slotMatch[2]})`;
+                }
+
+                const dateMatch = dateText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                if (dateMatch) {
+                  const day = parseInt(dateMatch[1], 10);
+                  const month = parseInt(dateMatch[2], 10);
+                  const year = dateMatch[3];
+                  const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+                  const timeMatch = slotTime.match(/\((\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\)/);
+                  if (timeMatch) {
+                    const startTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+                    const endTime = `${timeMatch[3].padStart(2, '0')}:${timeMatch[4]}`;
+
+                    const dateObj = new Date(parseInt(year), month - 1, day);
+                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    const dayName = dayNames[dateObj.getDay()];
+
+                    data.push({
+                      subjectCode: courseCode,
+                      day: dayName,
+                      date: dateString,
+                      slot: slotNumber,
+                      time: { start: startTime, end: endTime },
+                      location: room || '',
+                      isOnline: false,
+                      meetUrl: null,
+                      edunextUrl: null,
+                      materialsUrl: null,
+                      isRelocated: false,
+                      status: status || 'Not yet',
+                      activityId: `${courseCode}-${sessionNo}-${dateString}`,
+                      lecturer: lecturer,
+                      groupName: groupName,
+                      sessionNo: sessionNo
+                    });
+                  }
+                }
+              }
+            });
+            return data;
+          }
+
+          // Parse current course data
+          const currentCourse = courses.find(c => c.isCurrent);
+          let allClasses = [];
+
+          if (currentCourse) {
+            const currentData = parseTable(doc, currentCourse.code);
+            allClasses.push(...currentData);
+            console.log(`Extracted ${currentData.length} classes from ${currentCourse.code}`);
+          }
+
+          // Fetch and parse other courses
+          const otherCourses = courses.filter(c => !c.isCurrent && c.href);
+          for (let i = 0; i < otherCourses.length; i++) {
+            const course = otherCourses[i];
+            try {
+              const courseUrl = `https://fap.fpt.edu.vn/Report/ViewAttendstudent.aspx${course.href}`;
+              const res = await fetch(courseUrl, { credentials: 'include' });
+              const courseHtml = await res.text();
+              const courseDoc = new DOMParser().parseFromString(courseHtml, 'text/html');
+              const courseData = parseTable(courseDoc, course.code);
+              allClasses.push(...courseData);
+              console.log(`Extracted ${courseData.length} classes from ${course.code} (${i + 2}/${courses.length})`);
+            } catch (err) {
+              console.error(`Error fetching ${course.code}:`, err);
+            }
+          }
+
+          return {
+            success: true,
+            courses: courses,
+            classes: allClasses
+          };
+        } catch (err) {
+          return { error: err.message };
+        }
+      },
+      args: [ATTENDANCE_URL]
+    });
+
+    const result = attendanceResult[0].result;
+
+    if (result.error) {
+      if (result.error === 'NOT_LOGGED_IN') {
+        // Show alert on the FAP tab
         await chrome.scripting.executeScript({
           target: { tabId: fapTab.id },
           func: () => {
             alert('Bạn chưa đăng nhập vào FAP. Vui lòng đăng nhập và thử lại.');
           }
         });
-        throw new Error('NOT_LOGGED_IN');
       }
-      if (isFirstRunFlag) {
-        await markFirstRunCompleted();
-      }
+      throw new Error(result.error);
     }
 
-    // Step 3: Navigate to attendance page if not already there
-    if (!attendanceTab) {
-      console.log('Navigating to attendance page...');
-      attendanceTab = fapTab;
-      if (shouldCloseTab) {
-        tabToClose = attendanceTab.id;
-      }
-      await navigateToUrl(attendanceTab.id, ATTENDANCE_URL, waitTime);
-    }
+    const allClasses = result.classes || [];
+    const courses = result.courses || [];
 
-    // Step 4: Verify login before scraping
-    console.log('Verifying login state...');
-    const isOnAttendancePage = await chrome.scripting.executeScript({
-      target: { tabId: attendanceTab.id },
-      func: () => {
-        return window.location.href.includes('ViewAttendstudent.aspx') &&
-          document.querySelector('#ctl00_divUser') !== null;
-      }
-    });
-
-    if (!isOnAttendancePage[0].result) {
-      console.log('Not on attendance page or not logged in');
-      await invalidateLoginCache();
-      throw new Error('NOT_LOGGED_IN');
-    }
-
-    // Step 5: Get overlay localization
-    const overlayTitle = chrome.i18n.getMessage('overlayTitle');
-    const overlayMessage = chrome.i18n.getMessage('overlayMessage');
-    const overlayDismiss = chrome.i18n.getMessage('overlayDismiss');
-    const extensionName = chrome.i18n.getMessage('extensionName');
-
-    // Register tab for overlay injection
-    activeScrapingTabs.set(attendanceTab.id, {
-      title: overlayTitle,
-      message: overlayMessage,
-      dismissText: overlayDismiss,
-      extensionName: extensionName
-    });
-
-    // Set sessionStorage flag
-    await chrome.scripting.executeScript({
-      target: { tabId: attendanceTab.id },
-      func: (title, message, dismissText, extName) => {
-        sessionStorage.setItem('fptu_scraping_active', 'true');
-        sessionStorage.setItem('fptu_overlay_title', title);
-        sessionStorage.setItem('fptu_overlay_message', message);
-        sessionStorage.setItem('fptu_overlay_dismiss', dismissText);
-        sessionStorage.setItem('fptu_extension_name', extName);
-      },
-      args: [overlayTitle, overlayMessage, overlayDismiss, extensionName]
-    });
-
-    // Inject minimal overlay
-    await injectMinimalOverlay(attendanceTab.id, overlayTitle, overlayMessage, overlayDismiss, '', extensionName);
-
-    // Step 6: Inject content script
-    await chrome.scripting.executeScript({
-      target: { tabId: attendanceTab.id },
-      files: ['content.js']
-    });
-
-    await new Promise(resolve => setTimeout(resolve, WAIT_TIMES.OVERLAY_INIT));
-
-    // Show overlay
-    await sendMessageToContentScript(attendanceTab.id, {
-      action: 'showOverlay',
-      title: overlayTitle,
-      message: overlayMessage,
-      dismissText: overlayDismiss
-    });
-
-    // Step 7: Extract initial data from attendance page
-    console.log('Extracting data from attendance page...');
-
-    const initialDataResults = await chrome.scripting.executeScript({
-      target: { tabId: attendanceTab.id },
-      func: () => {
-        if (typeof window.extractScheduleDataFromAttendance === 'function') {
-          return window.extractScheduleDataFromAttendance();
-        }
-        return { error: 'FUNCTION_NOT_FOUND', classes: [] };
-      }
-    });
-
-    const initialData = initialDataResults[0].result;
-
-    if (initialData.error) {
-      throw new Error(initialData.error);
-    }
-
-    const allClasses = [...initialData.classes];
-    const courses = initialData.courses || [];
-    const otherCourses = courses.filter(c => !c.isCurrent);
-    const currentCourse = courses.find(c => c.isCurrent);
-    const totalCourses = courses.length;
-
-    console.log(`Found ${courses.length} courses, ${otherCourses.length} additional courses to fetch`);
-
-    // Show progress for first course (current course)
-    if (currentCourse) {
-      const firstProgressText = chrome.i18n.getMessage('overlayProgress', [
-        currentCourse.code,
-        '1',
-        totalCourses.toString()
-      ]);
-
-      await sendMessageToContentScript(attendanceTab.id, {
-        action: 'updateOverlayProgress',
-        progressText: firstProgressText
-      });
-    }
-
-    // Step 8: Fetch other courses in background (no page navigation needed)
-    if (otherCourses.length > 0) {
-      for (let i = 0; i < otherCourses.length; i++) {
-        const course = otherCourses[i];
-
-        // Update progress with course name
-        const progressText = chrome.i18n.getMessage('overlayProgress', [
-          course.code,
-          (i + 2).toString(),
-          totalCourses.toString()
-        ]);
-
-        await chrome.scripting.executeScript({
-          target: { tabId: attendanceTab.id },
-          func: (progressText) => {
-            sessionStorage.setItem('fptu_scraping_progress', progressText);
-            // Update overlay progress text if visible
-            const progressEl = document.getElementById('overlay-progress');
-            if (progressEl) {
-              progressEl.textContent = progressText;
-            }
-          },
-          args: [progressText]
-        });
-
-        await sendMessageToContentScript(attendanceTab.id, {
-          action: 'updateOverlayProgress',
-          progressText: progressText
-        });
-
-        // Fetch course data in background using fetch() API (no page navigation, no delay)
-        const courseUrl = `${ATTENDANCE_URL}${course.href}`;
-        console.log(`Fetching course ${course.code} in background...`);
-
-        try {
-          const courseDataResults = await chrome.scripting.executeScript({
-            target: { tabId: attendanceTab.id },
-            func: async (courseUrl, courseCode) => {
-              // Fetch the course page HTML in background
-              const response = await fetch(courseUrl, { credentials: 'include' });
-              const html = await response.text();
-
-              // Parse HTML to DOM
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(html, 'text/html');
-
-              // Parse attendance table from the fetched document
-              const table = doc.querySelector('table.table-bordered');
-              if (!table) {
-                console.log(`No attendance table found for course ${courseCode}`);
-                return [];
-              }
-
-              const data = [];
-              const rows = table.querySelectorAll('tr');
-
-              rows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length >= 7) {
-                  const sessionNo = cells[0].textContent.trim();
-                  const dateText = cells[1].querySelector('span')?.textContent.trim() || cells[1].textContent.trim();
-                  const slotText = cells[2].querySelector('span')?.textContent.trim() || cells[2].textContent.trim();
-                  const room = cells[3].textContent.trim();
-                  const lecturer = cells[4].textContent.trim();
-                  const groupName = cells[5].textContent.trim();
-                  const status = cells[6].textContent.trim();
-
-                  // Parse slot text
-                  const slotMatch = slotText.match(/(\d+)_\((.+)\)/);
-                  let slotNumber = null;
-                  let slotTime = '';
-                  if (slotMatch) {
-                    slotNumber = parseInt(slotMatch[1], 10);
-                    slotTime = `(${slotMatch[2]})`;
-                  }
-
-                  // Parse date
-                  const dateMatch = dateText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-                  if (dateMatch) {
-                    const day = parseInt(dateMatch[1], 10);
-                    const month = parseInt(dateMatch[2], 10);
-                    const year = dateMatch[3];
-                    const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-                    // Parse time from slotTime
-                    const timeMatch = slotTime.match(/\((\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\)/);
-                    if (timeMatch) {
-                      const startTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
-                      const endTime = `${timeMatch[3].padStart(2, '0')}:${timeMatch[4]}`;
-
-                      const dateObj = new Date(parseInt(year), month - 1, day);
-                      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                      const dayName = dayNames[dateObj.getDay()];
-
-                      data.push({
-                        subjectCode: courseCode,
-                        day: dayName,
-                        date: dateString,
-                        slot: slotNumber,
-                        time: {
-                          start: startTime,
-                          end: endTime
-                        },
-                        location: room || '',
-                        isOnline: false,
-                        meetUrl: null,
-                        edunextUrl: null,
-                        materialsUrl: null,
-                        isRelocated: false,
-                        status: status || 'Not yet',
-                        activityId: `${courseCode}-${sessionNo}-${dateString}`,
-                        lecturer: lecturer,
-                        groupName: groupName,
-                        sessionNo: sessionNo
-                      });
-                    }
-                  }
-                }
-              });
-
-              return data;
-            },
-            args: [courseUrl, course.code]
-          });
-
-          const courseClasses = courseDataResults[0].result || [];
-          allClasses.push(...courseClasses);
-
-          console.log(`Fetched ${courseClasses.length} classes for course ${course.code}`);
-        } catch (error) {
-          console.error(`Error fetching course ${course.code}:`, error);
-          errors.push({ course: course.code, error: error.message });
-        }
-      }
-    }
-
-    // Step 9: Sort classes by date
+    // Sort classes by date
     allClasses.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    console.log(`Total extracted: ${allClasses.length} classes`);
+    console.log(`Total extracted: ${allClasses.length} classes from ${courses.length} courses`);
 
-    // Step 10: Complete overlay
-    const completeText = chrome.i18n.getMessage('overlayCompleteWithWeeks', [
-      courses.length.toString(),
-      courses.length.toString()
-    ]);
-
-    activeScrapingTabs.delete(attendanceTab.id);
-
-    await chrome.scripting.executeScript({
-      target: { tabId: attendanceTab.id },
-      func: () => {
-        sessionStorage.removeItem('fptu_scraping_active');
-        sessionStorage.removeItem('fptu_scraping_week');
-        sessionStorage.removeItem('fptu_scraping_total');
-        sessionStorage.removeItem('fptu_scraping_progress');
+    // Close temporary tab if we created one
+    if (shouldCloseTab && fapTab) {
+      try {
+        await chrome.tabs.remove(fapTab.id);
+      } catch (e) {
+        console.log('Tab already closed:', e.message);
       }
-    });
+    }
 
-    await sendMessageToContentScript(attendanceTab.id, {
-      action: 'scrapingComplete',
-      totalWeeks: courses.length,
-      successCount: courses.length,
-      errorCount: 0,
-      completeText: completeText
-    });
-
-    scrapingSuccessful = true;
-
-    // Return results
     return {
       success: true,
       data: {
@@ -1670,43 +1537,19 @@ async function startScrapingFromAttendance() {
   } catch (error) {
     console.error('Scraping error:', error);
 
-    // Clear overlay on error
-    if (attendanceTab) {
-      activeScrapingTabs.delete(attendanceTab.id);
-
-      await chrome.scripting.executeScript({
-        target: { tabId: attendanceTab.id },
-        func: () => {
-          sessionStorage.removeItem('fptu_scraping_active');
-          sessionStorage.removeItem('fptu_scraping_week');
-          sessionStorage.removeItem('fptu_scraping_total');
-          sessionStorage.removeItem('fptu_scraping_progress');
-        }
-      });
-
-      await sendMessageToContentScript(attendanceTab.id, {
-        action: 'hideOverlay'
-      });
+    // Close temporary tab if we created one
+    if (shouldCloseTab && fapTab) {
+      try {
+        await chrome.tabs.remove(fapTab.id);
+      } catch (e) {
+        console.log('Tab already closed:', e.message);
+      }
     }
 
     return {
       success: false,
       error: error.message
     };
-  } finally {
-    // Cleanup: close tab if we created it and scraping failed
-    if (shouldCloseTab && tabToClose && !scrapingSuccessful) {
-      try {
-        console.log('Cleaning up: closing tab', tabToClose);
-        await chrome.tabs.remove(tabToClose);
-      } catch (e) {
-        console.log('Tab already closed:', e.message);
-      }
-    }
-
-    if (attendanceTab && !scrapingSuccessful && activeScrapingTabs.has(attendanceTab.id)) {
-      activeScrapingTabs.delete(attendanceTab.id);
-    }
   }
 }
 
