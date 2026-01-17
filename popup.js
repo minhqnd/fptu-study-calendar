@@ -459,9 +459,9 @@ async function initPopup() {
     const endDate = document.getElementById('endDate').value;
     const waitTime = parseInt(document.getElementById('waitTime').value, 10);
 
-    // NOTE: We now use attendance-based extraction by default (faster, more reliable)
-    // Date validation is optional for this method as it extracts all available courses
-    // But we can still keep date inputs for future filtering purposes
+    // NOTE: Date inputs are kept in UI for backward compatibility and potential future filtering features
+    // The attendance-based extraction fetches all available courses regardless of date range
+    // The old week-based method still uses these dates if useAttendanceMethod is set to false
 
     // Check for existing data and show merge/replace dialog if data exists
     const existing = await chrome.storage.local.get(['scrapedClasses']);

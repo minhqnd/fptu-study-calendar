@@ -1,6 +1,9 @@
 // ICS (iCalendar) export utility for FPTU Study Calendar
 // Compatible with Google Calendar, Apple Calendar, and other major calendar applications
 
+// Constants
+const APPLE_LOCATION_RADIUS = 141.1745233861194; // Default radius for Apple Maps location in meters
+
 /**
  * Internationalization helper for ICS export
  * @param {string} key - Message key
@@ -377,7 +380,7 @@ function generateIcsEvent(classData, index = 0, isFirstClassOfDay = false, campu
   // Add structured location with MapKit data if campus information is provided
   // This enables travel time notifications in Apple Calendar
   if (campusData && campusData.mapkit && campusData.geo && locationStr) {
-    const structuredLocation = `X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-APPLE-MAPKIT-HANDLE=${campusData.mapkit};X-APPLE-RADIUS=141.1745233861194;X-TITLE=${escapeIcsText(locationStr)}:geo:${campusData.geo}`;
+    const structuredLocation = `X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-APPLE-MAPKIT-HANDLE=${campusData.mapkit};X-APPLE-RADIUS=${APPLE_LOCATION_RADIUS};X-TITLE=${escapeIcsText(locationStr)}:geo:${campusData.geo}`;
     lines.push(structuredLocation);
     // Also add travel advisory for automatic travel time
     lines.push('X-APPLE-TRAVEL-ADVISORY-BEHAVIOR:AUTOMATIC');
