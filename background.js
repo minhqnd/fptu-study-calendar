@@ -1353,14 +1353,39 @@ async function startScrapingFromAttendance() {
 
     console.log('Using FAP tab:', fapTab.id);
 
-    // Step 2: Fetch attendance page and extract data using background fetch
+    // Step 2: Initialize overlay on the FAP tab
+    const overlayTitle = chrome.i18n.getMessage('overlayTitle');
+    const overlayMessage = chrome.i18n.getMessage('overlayMessage');
+    const overlayDismiss = chrome.i18n.getMessage('overlayDismiss');
+    const extensionName = chrome.i18n.getMessage('extensionName');
+
+    // Inject content script for overlay
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: fapTab.id },
+        files: ['content.js']
+      });
+      await new Promise(resolve => setTimeout(resolve, WAIT_TIMES.OVERLAY_INIT));
+    } catch (e) {
+      console.log('Content script may already be injected:', e.message);
+    }
+
+    // Show overlay
+    await injectMinimalOverlay(fapTab.id, overlayTitle, overlayMessage, overlayDismiss, '', extensionName);
+    await sendMessageToContentScript(fapTab.id, {
+      action: 'showOverlay',
+      title: overlayTitle,
+      message: overlayMessage,
+      dismissText: overlayDismiss
+    });
+
+    // Step 3: Fetch attendance page to get courses list
     console.log('Fetching attendance page in background...');
 
-    const attendanceResult = await chrome.scripting.executeScript({
+    const coursesResult = await chrome.scripting.executeScript({
       target: { tabId: fapTab.id },
       func: async (attendanceUrl) => {
         try {
-          // Fetch attendance page
           const response = await fetch(attendanceUrl, { credentials: 'include' });
           const html = await response.text();
           const parser = new DOMParser();
@@ -1372,7 +1397,7 @@ async function startScrapingFromAttendance() {
             return { error: 'NOT_LOGGED_IN' };
           }
 
-          // Extract courses
+          // Extract courses list
           const courseDiv = doc.getElementById('ctl00_mainContent_divCourse');
           if (!courseDiv) {
             return { error: 'No courses found' };
@@ -1389,10 +1414,135 @@ async function startScrapingFromAttendance() {
             if (match) courses.push({ code: match[2], href: link.getAttribute('href'), isCurrent: false });
           });
 
-          // Parse attendance table function (inline)
-          function parseTable(tableDoc, courseCode) {
-            const table = tableDoc.querySelector('table.table-bordered');
+          return { success: true, courses: courses, html: html };
+        } catch (err) {
+          return { error: err.message };
+        }
+      },
+      args: [ATTENDANCE_URL]
+    });
+
+    const coursesData = coursesResult[0].result;
+
+    if (coursesData.error) {
+      if (coursesData.error === 'NOT_LOGGED_IN') {
+        await chrome.scripting.executeScript({
+          target: { tabId: fapTab.id },
+          func: () => {
+            alert('Bạn chưa đăng nhập vào FAP. Vui lòng đăng nhập và thử lại.');
+          }
+        });
+      }
+      throw new Error(coursesData.error);
+    }
+
+    const courses = coursesData.courses || [];
+    const totalCourses = courses.length;
+    let allClasses = [];
+
+    console.log(`Found ${totalCourses} courses`);
+
+    // Step 4: Parse first course (from already fetched page)
+    const currentCourse = courses.find(c => c.isCurrent);
+    if (currentCourse) {
+      // Update progress
+      const progressText = chrome.i18n.getMessage('overlayProgress', [
+        currentCourse.code, '1', totalCourses.toString()
+      ]);
+      await sendMessageToContentScript(fapTab.id, {
+        action: 'updateOverlayProgress',
+        progressText: progressText
+      });
+
+      // Parse first course from already fetched HTML
+      const firstCourseResult = await chrome.scripting.executeScript({
+        target: { tabId: fapTab.id },
+        func: (html, courseCode) => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          const table = doc.querySelector('table.table-bordered');
+          if (!table) return [];
+
+          const data = [];
+          table.querySelectorAll('tr').forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 7) {
+              const sessionNo = cells[0].textContent.trim();
+              const dateText = cells[1].querySelector('span')?.textContent.trim() || cells[1].textContent.trim();
+              const slotText = cells[2].querySelector('span')?.textContent.trim() || cells[2].textContent.trim();
+              const room = cells[3].textContent.trim();
+              const lecturer = cells[4].textContent.trim();
+              const groupName = cells[5].textContent.trim();
+              const status = cells[6].textContent.trim();
+
+              const slotMatch = slotText.match(/(\d+)_\((.+)\)/);
+              let slotNumber = null, slotTime = '';
+              if (slotMatch) {
+                slotNumber = parseInt(slotMatch[1], 10);
+                slotTime = `(${slotMatch[2]})`;
+              }
+
+              const dateMatch = dateText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+              if (dateMatch) {
+                const day = parseInt(dateMatch[1], 10);
+                const month = parseInt(dateMatch[2], 10);
+                const year = dateMatch[3];
+                const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+                const timeMatch = slotTime.match(/\((\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\)/);
+                if (timeMatch) {
+                  const dateObj = new Date(parseInt(year), month - 1, day);
+                  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                  data.push({
+                    subjectCode: courseCode,
+                    day: dayNames[dateObj.getDay()],
+                    date: dateString,
+                    slot: slotNumber,
+                    time: { start: `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`, end: `${timeMatch[3].padStart(2, '0')}:${timeMatch[4]}` },
+                    location: room || '',
+                    isOnline: false, meetUrl: null, edunextUrl: null, materialsUrl: null, isRelocated: false,
+                    status: status || 'Not yet',
+                    activityId: `${courseCode}-${sessionNo}-${dateString}`,
+                    lecturer, groupName, sessionNo
+                  });
+                }
+              }
+            }
+          });
+          return data;
+        },
+        args: [coursesData.html, currentCourse.code]
+      });
+
+      allClasses.push(...(firstCourseResult[0].result || []));
+      console.log(`Extracted ${firstCourseResult[0].result?.length || 0} classes from ${currentCourse.code}`);
+    }
+
+    // Step 5: Fetch and parse other courses one by one with progress updates
+    const otherCourses = courses.filter(c => !c.isCurrent && c.href);
+    for (let i = 0; i < otherCourses.length; i++) {
+      const course = otherCourses[i];
+
+      // Update progress
+      const progressText = chrome.i18n.getMessage('overlayProgress', [
+        course.code, (i + 2).toString(), totalCourses.toString()
+      ]);
+      await sendMessageToContentScript(fapTab.id, {
+        action: 'updateOverlayProgress',
+        progressText: progressText
+      });
+
+      try {
+        const courseResult = await chrome.scripting.executeScript({
+          target: { tabId: fapTab.id },
+          func: async (courseUrl, courseCode) => {
+            const response = await fetch(courseUrl, { credentials: 'include' });
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const table = doc.querySelector('table.table-bordered');
             if (!table) return [];
+
             const data = [];
             table.querySelectorAll('tr').forEach(row => {
               const cells = row.querySelectorAll('td');
@@ -1406,8 +1556,7 @@ async function startScrapingFromAttendance() {
                 const status = cells[6].textContent.trim();
 
                 const slotMatch = slotText.match(/(\d+)_\((.+)\)/);
-                let slotNumber = null;
-                let slotTime = '';
+                let slotNumber = null, slotTime = '';
                 if (slotMatch) {
                   slotNumber = parseInt(slotMatch[1], 10);
                   slotTime = `(${slotMatch[2]})`;
@@ -1422,102 +1571,58 @@ async function startScrapingFromAttendance() {
 
                   const timeMatch = slotTime.match(/\((\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\)/);
                   if (timeMatch) {
-                    const startTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
-                    const endTime = `${timeMatch[3].padStart(2, '0')}:${timeMatch[4]}`;
-
                     const dateObj = new Date(parseInt(year), month - 1, day);
                     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                    const dayName = dayNames[dateObj.getDay()];
-
                     data.push({
                       subjectCode: courseCode,
-                      day: dayName,
+                      day: dayNames[dateObj.getDay()],
                       date: dateString,
                       slot: slotNumber,
-                      time: { start: startTime, end: endTime },
+                      time: { start: `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`, end: `${timeMatch[3].padStart(2, '0')}:${timeMatch[4]}` },
                       location: room || '',
-                      isOnline: false,
-                      meetUrl: null,
-                      edunextUrl: null,
-                      materialsUrl: null,
-                      isRelocated: false,
+                      isOnline: false, meetUrl: null, edunextUrl: null, materialsUrl: null, isRelocated: false,
                       status: status || 'Not yet',
                       activityId: `${courseCode}-${sessionNo}-${dateString}`,
-                      lecturer: lecturer,
-                      groupName: groupName,
-                      sessionNo: sessionNo
+                      lecturer, groupName, sessionNo
                     });
                   }
                 }
               }
             });
             return data;
-          }
-
-          // Parse current course data
-          const currentCourse = courses.find(c => c.isCurrent);
-          let allClasses = [];
-
-          if (currentCourse) {
-            const currentData = parseTable(doc, currentCourse.code);
-            allClasses.push(...currentData);
-            console.log(`Extracted ${currentData.length} classes from ${currentCourse.code}`);
-          }
-
-          // Fetch and parse other courses
-          const otherCourses = courses.filter(c => !c.isCurrent && c.href);
-          for (let i = 0; i < otherCourses.length; i++) {
-            const course = otherCourses[i];
-            try {
-              const courseUrl = `https://fap.fpt.edu.vn/Report/ViewAttendstudent.aspx${course.href}`;
-              const res = await fetch(courseUrl, { credentials: 'include' });
-              const courseHtml = await res.text();
-              const courseDoc = new DOMParser().parseFromString(courseHtml, 'text/html');
-              const courseData = parseTable(courseDoc, course.code);
-              allClasses.push(...courseData);
-              console.log(`Extracted ${courseData.length} classes from ${course.code} (${i + 2}/${courses.length})`);
-            } catch (err) {
-              console.error(`Error fetching ${course.code}:`, err);
-            }
-          }
-
-          return {
-            success: true,
-            courses: courses,
-            classes: allClasses
-          };
-        } catch (err) {
-          return { error: err.message };
-        }
-      },
-      args: [ATTENDANCE_URL]
-    });
-
-    const result = attendanceResult[0].result;
-
-    if (result.error) {
-      if (result.error === 'NOT_LOGGED_IN') {
-        // Show alert on the FAP tab
-        await chrome.scripting.executeScript({
-          target: { tabId: fapTab.id },
-          func: () => {
-            alert('Bạn chưa đăng nhập vào FAP. Vui lòng đăng nhập và thử lại.');
-          }
+          },
+          args: [`${ATTENDANCE_URL}${course.href}`, course.code]
         });
-      }
-      throw new Error(result.error);
-    }
 
-    const allClasses = result.classes || [];
-    const courses = result.courses || [];
+        const courseClasses = courseResult[0].result || [];
+        allClasses.push(...courseClasses);
+        console.log(`Extracted ${courseClasses.length} classes from ${course.code}`);
+      } catch (error) {
+        console.error(`Error fetching ${course.code}:`, error);
+        errors.push({ course: course.code, error: error.message });
+      }
+    }
 
     // Sort classes by date
     allClasses.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    console.log(`Total extracted: ${allClasses.length} classes from ${courses.length} courses`);
+    console.log(`Total extracted: ${allClasses.length} classes from ${totalCourses} courses`);
 
-    // Close temporary tab if we created one
+    // Step 6: Complete overlay
+    const completeText = chrome.i18n.getMessage('overlayCompleteWithWeeks', [
+      totalCourses.toString(), totalCourses.toString()
+    ]);
+    await sendMessageToContentScript(fapTab.id, {
+      action: 'scrapingComplete',
+      totalWeeks: totalCourses,
+      successCount: totalCourses,
+      errorCount: errors.length,
+      completeText: completeText
+    });
+
+    // Close temporary tab if we created one (after a short delay to show completion)
     if (shouldCloseTab && fapTab) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
       try {
         await chrome.tabs.remove(fapTab.id);
       } catch (e) {
@@ -1536,6 +1641,15 @@ async function startScrapingFromAttendance() {
 
   } catch (error) {
     console.error('Scraping error:', error);
+
+    // Hide overlay on error
+    if (fapTab) {
+      try {
+        await sendMessageToContentScript(fapTab.id, { action: 'hideOverlay' });
+      } catch (e) {
+        console.log('Could not hide overlay:', e.message);
+      }
+    }
 
     // Close temporary tab if we created one
     if (shouldCloseTab && fapTab) {
