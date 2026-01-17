@@ -292,7 +292,7 @@ async function initPopup() {
   }
 
   // Load saved settings
-  const result = await chrome.storage.local.get(['waitTime', 'startDate', 'endDate']);
+  const result = await chrome.storage.local.get(['waitTime', 'startDate', 'endDate', 'selectedCampus']);
   let waitTime = result.waitTime || WAIT_TIMES.DEFAULT_WAIT_TIME;
   
   // Validate and clamp saved wait time if invalid
@@ -305,6 +305,16 @@ async function initPopup() {
   }
   
   document.getElementById('waitTime').value = waitTime;
+
+  // Load saved campus or use default (hoa_lac)
+  const campusSelect = document.getElementById('campusSelect');
+  const savedCampus = result.selectedCampus || 'hoa_lac';
+  campusSelect.value = savedCampus;
+  
+  // Save campus when selection changes
+  campusSelect.addEventListener('change', () => {
+    chrome.storage.local.set({ selectedCampus: campusSelect.value });
+  });
 
   // Load saved dates or use defaults
   const today = new Date();
@@ -449,12 +459,9 @@ async function initPopup() {
     const endDate = document.getElementById('endDate').value;
     const waitTime = parseInt(document.getElementById('waitTime').value, 10);
 
-    // Comprehensive date validation
-    const validation = validateDateRange(startDate, endDate);
-    if (!validation.valid) {
-      alert(validation.error);
-      return;
-    }
+    // NOTE: We now use attendance-based extraction by default (faster, more reliable)
+    // Date validation is optional for this method as it extracts all available courses
+    // But we can still keep date inputs for future filtering purposes
 
     // Check for existing data and show merge/replace dialog if data exists
     const existing = await chrome.storage.local.get(['scrapedClasses']);
@@ -476,7 +483,7 @@ async function initPopup() {
     progress.textContent = getMessage('progressInitializing');
 
     try {
-      // Send message to background script
+      // Send message to background script to use attendance-based extraction
       progress.textContent = getMessage('progressSending');
       
       const response = await new Promise((resolve, reject) => {
@@ -487,8 +494,7 @@ async function initPopup() {
         
         chrome.runtime.sendMessage({
           action: 'startScraping',
-          startDate,
-          endDate,
+          useAttendanceMethod: true,  // Use the new faster method
           waitTime,
           mergeMode: mergeMode
         }, (response) => {
@@ -555,17 +561,49 @@ async function initPopup() {
   // Export button handler
   exportButton.addEventListener('click', async () => {
     try {
-      // Get classes from storage
-      const result = await chrome.storage.local.get(['scrapedClasses']);
+      // Get classes and campus from storage
+      const result = await chrome.storage.local.get(['scrapedClasses', 'selectedCampus']);
       const classes = result.scrapedClasses || [];
+      const selectedCampus = result.selectedCampus || 'hoa_lac';
       
       if (classes.length === 0) {
         alert('Không có dữ liệu lớp học để xuất. Vui lòng trích xuất lịch học trước.');
         return;
       }
       
-      // Export to ICS
-      exportToIcs(classes);
+      // Define campus data (same as in background.js and content.js)
+      const CAMPUSES = {
+        hoa_lac: {
+          name: 'Truong Dai Hoc FPT',
+          geo: '21.013148,105.524797',
+          mapkit: 'CAESpwMIrk0QmaPutrGyraLOARoSCawDe6ddAzVAEaeB1UeWYVpAIpwBCgdWaWV0bmFtEgJWThoFSGFub2kqClRoYWNoIFRoYXQyClRoYWNoIFRoYXRSFFRoYW5nIExvbmcgQm91bGV2YXJkYhRUaGFuZyBMb25nIEJvdWxldmFyZIoBQUVkdWNhdGlvbiBhbmQgVHJhaW5pbmcgQXJlYSDigJMgSG9hIExhYyBIaWdoLVRlY2ggUGFyayBUaGFjaCBUaGF0KhpUcsaw4budbmcgxJDhuqFpIEjhu41jIEZQVDJkVGhhbmcgTG9uZyBCb3VsZXZhcmQKRWR1Y2F0aW9uIGFuZCBUcmFpbmluZyBBcmVhIOKAkyBIb2EgTGFjIEhpZ2gtVGVjaCBQYXJrClRoYWNoIFRoYXQKSGFub2kKVmlldG5hbTgvUAFaXgooCJmj7raxsq2izgESEgmsA3unXQM1QBGngdVHlmFaQBiuTZADAZgDAaIfMQiZo+62sbKtos4BGiQKGlRyxrDhu51uZyDEkOG6oWkgSOG7jWMgRlBUEAAqAnZpQAA='
+        },
+        da_nang: {
+          name: 'Dai hoc FPT Da Nang',
+          geo: '15.967889,108.260694',
+          mapkit: 'CAES0QIIrk0Q6rW20Z6b5Yf4ARoSCUZKDjOP7y9AEbKRNTSvEFtAImgKB1ZpZXRuYW0SAlZOGgdEYSBOYW5nKgxOZ3UgSGFuaCBTb24yB0RhIE5hbmdCB0hvYSBIYWmKARZGUFQgVXJiYW4gQXJlYSBEYSBOYW5nigEHSG9hIEhhaYoBDE5ndSBIYW5oIFNvbiocxJDhuqFpIGjhu41jIEZQVCDEkMOgIE7hurVuZzIWRlBUIFVyYmFuIEFyZWEgRGEgTmFuZzIHSG9hIEhhaTIMTmd1IEhhbmggU29uMgdEYSBOYW5nMgdWaWV0bmFtOC9QAVpgCigI6rW20Z6b5Yf4ARISCUZKDjOP7y9AEbKRNTSvEFtAGK5NkAMBmAMBoh8zCOq1ttGem+WH+AEaJgocxJDhuqFpIGjhu41jIEZQVCDEkMOgIE7hurVuZxAAKgJ2aUAA'
+        },
+        can_tho: {
+          name: 'Truong Dai Hoc FPT',
+          geo: '10.013006,105.731633',
+          mapkit: 'CAES4QIIrk0Qwp3j9q213ro4GhIJVkW4yagGJEARiAp6FNNuWkAifwoHVmlldG5hbRICVk4aB0NhbiBUaG8qCU5pbmggS2lldTIHQ2FuIFRob0IHQW4gQmluaFIUTmd1eWVuIFZhbiBDdSBTdHJlZXRaAzYwMGIZNjAwLCBOZ3V5ZW4gVmFuIEN1IFN0cmVldIoBB0FuIEJpbmiKAQlOaW5oIEtpZXUqGlRyxrDhu51uZyDEkOG6oWkgSOG7jWMgRlBUMhk2MDAsIE5ndXllbiBWYW4gQ3UgU3RyZWV0MgdBbiBCaW5oMglOaW5oIEtpZXUyB0NhbiBUaG8yB1ZpZXRuYW04L1ABWlwKJwjCneP2rbXeujgSEglWRbjJqAYkQBGICnoU025aQBiuTZADAZgDAaIfMAjCneP2rbXeujgaJAoaVHLGsOG7nW5nIMSQ4bqhaSBI4buNYyBGUFQQACoCdmlAAA=='
+        },
+        hcm: {
+          name: 'FPT University HCMC',
+          geo: '10.841896,106.808790',
+          mapkit: 'CAES3QIIrk0QpOrog/Sy1LjfARoSCY5HX/cMryVAEZz0YzjDs1pAInkKB1ZpZXRuYW0SAlZOGhBIbyBDaGkgTWluaCBDaXR5KgdUaHUgRHVjMhBIbyBDaGkgTWluaCBDaXR5Qg1Mb25nIFRoYW5oIE15UglTdHJlZXQgRDFiCVN0cmVldCBEMYoBDUxvbmcgVGhhbmggTXmKAQdUaHUgRHVjKhxGUFQgVW5pdmVyc2l0eSBIQ01DIFN0dWRlbnRzMglTdHJlZXQgRDEyDUxvbmcgVGhhbmggTXkyB1RodSBEdWMyEEhvIENoaSBNaW5oIENpdHkyB1ZpZXRuYW04L1ABWl4KKAik6uiD9LLUuN8BEhIJjkdf9wyvJUARnPRjOMOzWkAYrk2QAwGYAwGiHzEIpOrog/Sy1LjfARokChxGUFQgVW5pdmVyc2l0eSBIQ01DIFN0dWRlbnRzEAAqAEAA'
+        },
+        quy_nhon: {
+          name: 'FPT University Quy Nhon',
+          geo: '13.803885,109.219148',
+          mapkit: 'CAESmQIIrk0QvMvU2/XpmIlJGhIJy4XKv5abK0ARlx8ThAZOW0AiQwoHVmlldG5hbRICVk4aCUJpbmggRGluaCoIUXV5IE5ob24yCFF1eSBOaG9uQglOaG9uIEJpbmiKAQlOaG9uIEJpbmgqIUZQVCBVbml2ZXJzaXR5IFF1eSBOaG9uIEFJIENhbXB1czIJTmhvbiBCaW5oMghRdXkgTmhvbjIJQmluaCBEaW5oMgdWaWV0bmFtOC9QAVphCicIvMvU2/XpmIlJEhIJy4XKv5abK0ARlx8ThAZOW0AYrk2QAwGYAwGiHzUIvMvU2/XpmIlJGikKIUZQVCBVbml2ZXJzaXR5IFF1eSBOaG9uIEFJIENhbXB1cxAAKgBAAA=='
+        }
+      };
+      
+      const campusData = CAMPUSES[selectedCampus];
+      
+      // Export to ICS with campus data for location
+      exportToIcs(classes, null, campusData);
       
       // Show success message
       progress.className = 'progress success';
