@@ -951,6 +951,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await loadTheme();
 
+  // Load saved campus preference
+  async function loadCampus() {
+    try {
+      const result = await chrome.storage.local.get(['selectedCampus']);
+      selectedCampus = result.selectedCampus || 'hoa_lac';
+      console.log('Loaded campus preference:', selectedCampus);
+    } catch (error) {
+      console.error('Error loading campus:', error);
+    }
+  }
+
+  await loadCampus();
+
   // Initialize i18n for clear data button
   const clearDataBtn = document.getElementById('clearDataBtn');
   const clearDataBtnText = document.getElementById('clearDataBtnText');
