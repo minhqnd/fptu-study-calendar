@@ -886,7 +886,11 @@
     console.log('Content script loaded on timetable page, starting extraction...');
     scrapedData = extractScheduleData();
     window.scrapedData = scrapedData;
-    console.log('Content script extraction complete. Found', scrapedData ? scrapedData.length : 0, 'classes');
+    console.log(
+      'Content script extraction complete. Found',
+      Array.isArray(scrapedData) ? scrapedData.length : 0,
+      'classes'
+    );
     console.log('Sample data:', scrapedData && scrapedData.length > 0 ? scrapedData[0] : 'No data');
   } else if (isAttendancePage) {
     console.log('Content script loaded on attendance page - extraction handled by background script');
